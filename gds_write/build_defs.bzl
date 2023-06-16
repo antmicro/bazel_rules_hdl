@@ -15,6 +15,7 @@
 """These build rules run automated GDS write on an implemented design"""
 
 load("//place_and_route:open_road.bzl", "OpenRoadInfo")
+load("//synthesis:build_defs.bzl", "SynthesisInfo")
 
 def _gds_write_impl(ctx):
     final_gds = ctx.actions.declare_file("{}.gds".format(ctx.attr.name))
@@ -74,7 +75,7 @@ def _gds_write_impl(ctx):
     additional_gds_paths = " ".join([file.path for file in ctx.files.additional_gds])
     write_gds_script = ctx.actions.declare_file("write_gds.sh")
     write_gds_cmd = "PYTHONPATH=$PYTHONPATH:{} python {}".format(pythonpath, ctx.executable._gds_write.path) + \
-			" --design-name {}".format("counter") + \
+			" --design-name {}".format(ctx.attr.implemented_rtl[SynthesisInfo].top_module) + \
 			" --input-def {}".format(ctx.attr.implemented_rtl[OpenRoadInfo].routed_def.path) + \
 			" --tech-file {}".format(klayout_final_lyt.path) + \
 			" --out {}".format(final_gds.path) + \
@@ -110,7 +111,7 @@ def _gds_write_impl(ctx):
 gds_write = rule(
     implementation = _gds_write_impl,
     attrs = {
-        "implemented_rtl": attr.label(mandatory = True, providers = [OpenRoadInfo]),
+        "implemented_rtl": attr.label(mandatory = True, providers = [OpenRoadInfo, SynthesisInfo]),
         "klayout_lyt": attr.label(mandatory = True, allow_single_file = True),
         "klayout_lef": attr.label(mandatory = True, allow_single_file = True),
         "additional_lef": attr.label_list(allow_files = True),
