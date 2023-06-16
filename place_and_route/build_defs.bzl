@@ -60,6 +60,7 @@ def _place_and_route_impl(ctx):
 
     return [
         DefaultInfo(files = depset(output_files)),
+        SynthesisInfo(top_module = ctx.attr.synthesized_rtl[SynthesisInfo].top_module),
         open_road_provider,
     ]
 
