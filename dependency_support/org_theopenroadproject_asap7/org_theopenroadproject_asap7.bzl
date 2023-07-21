@@ -22,9 +22,9 @@ def org_theopenroadproject_asap7():
         http_archive,
         name = "org_theopenroadproject_asap7",
         urls = [
-            "https://github.com/The-OpenROAD-Project/asap7/archive/157c92cfd2567a98c5f794fb10c2dd0713516374.tar.gz",
+            "https://github.com/antmicro/asap7/archive/8090e725a107c94e0d1ee7a466c113b8d8910867.tar.gz",
         ],
-        strip_prefix = "asap7-157c92cfd2567a98c5f794fb10c2dd0713516374",
-        sha256 = "bfa76681ee0f1b109cb73415728cf3d7508ce0be88ac491962e8a0016033a683",
+        strip_prefix = "asap7-8090e725a107c94e0d1ee7a466c113b8d8910867",
+        sha256 = "4100d12ac4404065f9628a7dbd9600a4778c6dec8b92518ede6ab3c2f9b34ef5",
         build_file = Label("@rules_hdl//dependency_support/org_theopenroadproject_asap7:bundled.BUILD.bazel"),
     )
