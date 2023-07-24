@@ -164,7 +164,8 @@ def _cocotb_test_impl(ctx):
     vhdl_files = _collect_vhdl_files(ctx).to_list()
 
     # create test script
-    runner_script = ctx.actions.declare_file("cocotb_runner.sh")
+    script_name = ctx.attr.name + "_cocotb_runner.sh"
+    runner_script = ctx.actions.declare_file(script_name)
     ctx.actions.write(
         output = runner_script,
         content = _get_test_command(ctx, verilog_files, vhdl_files),
