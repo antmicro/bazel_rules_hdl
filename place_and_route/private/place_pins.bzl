@@ -34,7 +34,7 @@ def place_pins(ctx, open_road_info):
     timing_setup_command_struct = timing_setup_commands(ctx)
     inputs = timing_setup_command_struct.inputs
 
-    tapcell_command = "tapcell -distance {tapcell_distance} -tapcell_master {tapcell}".format(
+    tapcell_command = "tapcell -distance {tapcell_distance} -tapcell_master {tapcell} -endcap_master {endcap} -halo_width_x 2 -halo_width_y 2".format(
         tapcell = open_road_configuration.tap_cell,
         tapcell_distance = open_road_configuration.tapcell_distance,
         endcap = open_road_configuration.endcap_cell,
