@@ -26,7 +26,7 @@ asap7_cell_library(
     default_corner_delay_model = "ccs",
     default_corner_swing = "SS",
     openroad_configuration = ":open_road_asap7_1x",
-    tech_lef = "@rules_hdl//dependency_support/org_theopenroadproject_asap7:asap7_tech_1x_201209.lef",
+    tech_lef = "asap7sc7p5t_28/techlef_misc/asap7_tech_1x_201209.lef",
     visibility = [
         "//visibility:public",
     ]
