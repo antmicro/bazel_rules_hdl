@@ -55,7 +55,7 @@ def clock_tree_synthesis(ctx, open_road_info):
         "filler_placement \"{filler_cells}\"".format(
             filler_cells = " ".join(open_road_configuration.fill_cells),
         ),
-        "check_placement",
+        "check_placement -verbose",
     ]
 
     command_output = openroad_command(
