@@ -131,6 +131,18 @@ def _get_test_command(ctx, verilog_files, vhdl_files):
     waves_args = " --waves" if ctx.attr.waves else ""
     seed_args = " --seed {}".format(ctx.attr.seed) if ctx.attr.seed != "" else ""
 
+    timescale_args = ""
+    if ctx.attr.timescale:
+        if "unit" not in ctx.attr.timescale:
+            fail("Time unit not specified for the timescale attribute")
+        if "precision" not in ctx.attr.timescale:
+            fail("Time precision not specified for the timescale attribute")
+
+        timescale_args = " --timescale='({},{})'".format(
+            ctx.attr.timescale["unit"],
+            ctx.attr.timescale["precision"],
+        )
+
     test_module_args = _pymodules_to_argstring(ctx.files.test_module, "test_module")
     python_interpreter = ctx.toolchains["@rules_python//python:toolchain_type"].py3_runtime.interpreter.path
 
@@ -156,6 +168,7 @@ def _get_test_command(ctx, verilog_files, vhdl_files):
         verbose_args +
         waves_args +
         seed_args +
+        timescale_args +
         test_module_args
     )
 
@@ -166,7 +179,7 @@ def _cocotb_test_impl(ctx):
     vhdl_files = _collect_vhdl_files(ctx).to_list()
 
     # create test script
-    runner_script = ctx.actions.declare_file("cocotb_runner.sh")
+    runner_script = ctx.actions.declare_file("{}_cocotb_runner.sh".format(ctx.label.name))
     ctx.actions.write(
         output = runner_script,
         content = _get_test_command(ctx, verilog_files, vhdl_files),
@@ -272,6 +285,10 @@ _cocotb_test_attrs = {
     "testcase": attr.string_list(
         doc = "Name(s) of a specific testcase(s) to run. If not set, run all testcases found in *test_module*",
         default = [],
+    ),
+    "timescale": attr.string_dict(
+        doc = "Contains time unit and time precision for the simulator",
+        default = {},
     ),
     "verbose": attr.bool(
         doc = "Enable verbose messages",
