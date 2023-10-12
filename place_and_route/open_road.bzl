@@ -256,7 +256,7 @@ def openroad_command(ctx, commands, input_db = None, step_name = None, inputs = 
         input_manifests = input_manifests,
         env = {
             "TCL_LIBRARY": openroad_runfiles_dir + "/tk_tcl/library",
-        },
+        } | ctx.configuration.default_shell_env,
         execution_requirements = execution_requirements,
         mnemonic = "OpenROAD",
         toolchain = None,
