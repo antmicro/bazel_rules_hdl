@@ -72,7 +72,7 @@ def _gds_write_impl(ctx):
                 tech_lef,
             ],
         ),
-        command = "python {}".format(ctx.executable._gds_write.path) +
+        command = "printenv && python {}".format(ctx.executable._gds_write.path) +
                   " --design-name {}".format(ctx.attr.implemented_rtl[SynthesisInfo].top_module) +
                   " --input-def {}".format(ctx.attr.implemented_rtl[OpenRoadInfo].routed_def.path) +
                   lef_args +
