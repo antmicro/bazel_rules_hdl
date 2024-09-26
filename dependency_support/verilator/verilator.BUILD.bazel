@@ -367,3 +367,9 @@ cc_binary(
     visibility = ["//visibility:public"],
     deps = [":verilator_libV3"],
 )
+
+filegroup(
+    name = "verilator_shared",
+    srcs = glob(["include/*.h"]) + glob(["include/*.cpp"]),
+    visibility = ["//visibility:public"],
+)
