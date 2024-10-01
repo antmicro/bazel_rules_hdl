@@ -13,8 +13,7 @@
 # limitations under the License.
 
 load("@rules_cc//cc:defs.bzl", "cc_test")
-load("//verilator:defs.bzl", "verilator_cc_library")
-load("//verilator:defs.bzl", "verilator_cc_binary")
+load("//verilator:defs.bzl", "verilator_cc_binary", "verilator_cc_library")
 load("//verilog:defs.bzl", "verilog_library")
 
 package(
@@ -125,16 +124,15 @@ verilog_library(
     ],
 )
 
-# Verilated binary
-verilator_cc_binary (
+verilator_cc_binary(
     name = "tb_binary",
-    module = ":tb",
-    module_top = "tb",
-    vopts = [
-        "--timing",
-    ],
     copts = [
         "-std=c++20",
     ],
+    module = ":tb",
+    module_top = "tb",
     trace = True,
+    vopts = [
+        "--timing",
+    ],
 )
