@@ -14,6 +14,7 @@
 
 load("@rules_cc//cc:defs.bzl", "cc_test")
 load("//verilator:defs.bzl", "verilator_cc_library")
+load("//verilator:defs.bzl", "verilator_cc_binary")
 load("//verilog:defs.bzl", "verilog_library")
 
 package(
@@ -112,4 +113,28 @@ cc_test(
         ":nested_module_2_verilator",
         "@com_google_googletest//:gtest_main",
     ],
+)
+
+verilog_library(
+    name = "tb",
+    srcs = [
+        "tb.sv",
+    ],
+    deps = [
+        ":adder",
+    ],
+)
+
+# Verilated binary
+verilator_cc_binary (
+    name = "tb_binary",
+    module = ":tb",
+    module_top = "tb",
+    vopts = [
+        "--timing",
+    ],
+    copts = [
+        "-std=c++20",
+    ],
+    trace = True,
 )
