@@ -14,16 +14,22 @@
 
 load("//verilog:defs.bzl", "VerilogInfo")
 
+_RUNFILES = ["dat", "mem"]
+
 def _vcs_binary(ctx):
     transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag])
     all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs.to_list()]
     all_data = [verilog_info_struct.data for verilog_info_struct in transitive_srcs.to_list()]
     all_files = [src for sub_tuple in (all_srcs + all_data) for src in sub_tuple]
 
-    # TODO: Filter
+    # Filter out .dat files.
+    runfiles = []
     verilog_files = []
     for file in all_files:
-        verilog_files.append(file)
+        if file.extension in _RUNFILES:
+            runfiles.append(file)
+        else:
+            verilog_files.append(file)
 
     vcs_log = ctx.actions.declare_file("{}.log".format(ctx.label.name))
     vcs_out = ctx.actions.declare_file(ctx.label.name)
@@ -52,6 +58,7 @@ def _vcs_binary(ctx):
     return [
         DefaultInfo(
             executable = vcs_out,
+            runfiles = ctx.runfiles(files = runfiles),
         ),
     ]
 
