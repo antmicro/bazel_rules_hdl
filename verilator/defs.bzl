@@ -203,6 +203,13 @@ def _verilate(ctx, vopts = [], copy_shared = False):
     args.add_all(ctx.attr.vopts, expand_directories = False)
     args.add_all(vopts)
 
+    if ctx.attr.coverage == "all":
+        args.add("--coverage")
+    if ctx.attr.coverage == "line":
+        args.add("--coverage-line")
+    if ctx.attr.coverage == "toggle":
+        args.add("--coverage-toggle")
+
     ctx.actions.run(
         arguments = [args],
         mnemonic = "VerilatorCompile",
@@ -276,6 +283,11 @@ verilator_cc_library = rule(
             doc = "Enable tracing for Verilator",
             default = False,
         ),
+        "coverage": attr.string(
+            doc = "Enable coverage collection",
+            default = "none",
+            values = ["none", "all", "line", "toggle"],
+        ),
         "vopts": attr.string_list(
             doc = "Additional command line options to pass to Verilator",
             default = ["-Wall"],
@@ -315,6 +327,9 @@ def _verilator_cc_binary(ctx):
     # Do actual compile
     defines = ["VM_TRACE"] if ctx.attr.trace else []
 
+    if ctx.attr.coverage != "none":
+        defines += ["VM_COVERAGE"]
+
     return cc_compile_and_link_binary(
         ctx,
         srcs = [verilator_output_cpp],
@@ -344,6 +359,11 @@ verilator_cc_binary = rule(
         "trace": attr.bool(
             doc = "Enable tracing for Verilator",
             default = False,
+        ),
+        "coverage": attr.string(
+            doc = "Enable coverage collection",
+            default = "none",
+            values = ["none", "all", "line", "toggle"],
         ),
         "vopts": attr.string_list(
             doc = "Additional command line options to pass to Verilator",

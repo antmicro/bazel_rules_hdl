@@ -132,6 +132,7 @@ verilator_cc_binary(
     module = ":tb",
     module_top = "tb",
     trace = True,
+    coverage = "all",
     vopts = [
         "--timing",
     ],
