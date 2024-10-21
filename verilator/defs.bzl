@@ -391,6 +391,75 @@ verilator_cc_binary = rule(
     fragments = ["cpp"],
 )
 
+def _verilator_run(ctx):
+
+    args = []
+    outputs = list(ctx.outputs.outs)
+
+    # Options for capturing stdout/stderr
+    if ctx.outputs.stdout:
+        outputs.append(ctx.outputs.stdout)
+        args.append("--stdout")
+        args.append(ctx.outputs.stdout.path)
+
+    if ctx.outputs.stderr:
+        outputs.append(ctx.outputs.stderr)
+        args.append("--stderr")
+        args.append(ctx.outputs.stderr.path)
+
+    # Target binary name
+    args.append(ctx.executable.binary.path)
+
+    # Target binary args
+    for arg in ctx.attr.args:
+        args.append(arg)
+
+    # Run
+    ctx.actions.run(
+        outputs = outputs,
+        inputs = [ctx.executable.binary],
+        tools = [ctx.executable._run_wrapper],
+        executable = ctx.executable._run_wrapper,
+        arguments = args,
+        mnemonic = "RunVerilatedBinary",
+        use_default_shell_env = False,
+    )
+
+    return DefaultInfo(
+        files = depset(outputs),
+        runfiles = ctx.runfiles(files = outputs),
+    )
+
+verilator_run = rule(
+    implementation = _verilator_run,
+    attrs = {
+        "binary": attr.label(
+            doc = "Verilated binary to run",
+            mandatory = True,
+            executable = True,
+            cfg = "exec",
+        ),
+        "outs": attr.output_list(
+            doc = "List of simulation products",
+        ),
+        "args": attr.string_list(
+            doc = "Arguments to be passed to the binary (optional)",
+        ),
+        "stdout": attr.output(
+            doc = "Name of the file to capture stdout to (optional)",
+        ),
+        "stderr": attr.output(
+            doc = "Name of the file to capture stderr to (optional)",
+        ),
+        "_run_wrapper": attr.label(
+            doc = "A wrapper utility for running the binary",
+            cfg = "exec",
+            executable = True,
+            default = Label("//verilator/private:verilator_run_binary"),
+        ),
+    }
+)
+
 def _verilator_toolchain_impl(ctx):
     all_files = ctx.attr.verilator[DefaultInfo].default_runfiles.files
 

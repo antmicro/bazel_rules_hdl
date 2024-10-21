@@ -5,3 +5,9 @@ py_binary(
     srcs = ["verilator_copy_tree.py"],
     visibility = ["//visibility:public"],
 )
+
+py_binary(
+    name = "verilator_run_binary",
+    srcs = ["verilator_run_binary.py"],
+    visibility = ["//visibility:public"],
+)
