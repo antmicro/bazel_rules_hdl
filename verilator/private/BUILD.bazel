@@ -11,3 +11,9 @@ cc_binary(
     srcs = ["verilator_process_wrapper.cc"],
     visibility = ["//visibility:public"],
 )
+
+py_binary(
+    name = "verilator_run_binary",
+    srcs = ["verilator_run_binary.py"],
+    visibility = ["//visibility:public"],
+)
