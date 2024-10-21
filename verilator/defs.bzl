@@ -407,6 +407,12 @@ def _verilator_run(ctx):
         args.append("--stderr")
         args.append(ctx.outputs.stderr.path)
 
+    # Options for moving output coverage file
+    if ctx.outputs.coverage:
+        outputs.append(ctx.outputs.coverage)
+        args.append("--coverage")
+        args.append(ctx.outputs.coverage.path)
+
     # Target binary name
     args.append(ctx.executable.binary.path)
 
@@ -453,6 +459,9 @@ verilator_run = rule(
         ),
         "stderr": attr.output(
             doc = "Name of the file to capture stderr to (optional)",
+        ),
+        "coverage": attr.output(
+            doc = "Name of the output coverage data file (optional)",
         ),
         "_run_wrapper": attr.label(
             doc = "A wrapper utility for running the binary",

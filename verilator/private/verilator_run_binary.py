@@ -6,6 +6,8 @@ A wrapper is needed for capturing simulation logs. Bazel can't do that on its
 own yet. See https://github.com/bazelbuild/bazel/issues/5511
 """
 import sys
+import os
+import shutil
 import argparse
 import subprocess
 
@@ -31,6 +33,12 @@ def main():
         default=None,
         help="Path to a file to redirect stderr to",
     )
+    parser.add_argument(
+        "--coverage",
+        type=str,
+        default=None,
+        help="File name to move 'coverage.dat' to",
+    )
 
     ns, args = parser.parse_known_args()
 
@@ -42,8 +50,9 @@ def main():
     binary, args = args[0], args[1:]
 
     print(f"Running '{binary}' with {args}")
-    print(f" stdout: {ns.stdout}")
-    print(f" stderr: {ns.stderr}")
+    print(f" stdout  : {ns.stdout}")
+    print(f" stderr  : {ns.stderr}")
+    print(f" coverage: {ns.coverage}")
 
     # Run the process, capture output
     o = open(ns.stdout, "w") if ns.stdout else None
@@ -56,7 +65,16 @@ def main():
         stderr=e,
     )
 
+    # Move the coverage file
+    if ns.coverage:
+        coverage = "coverage.dat"
+        if os.path.isfile(coverage):
+            shutil.move(coverage, ns.coverage)
+        else:
+            print("WARNING: 'coverage.dat' has not been written!")
+
     sys.exit(p.returncode)
+
 
 if __name__ == "__main__":
     main()
