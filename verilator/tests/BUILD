@@ -172,4 +172,5 @@ verilator_run (
     name = "load_and_count_tb_run",
     binary = ":load_and_count_tb_binary",
     stdout = "load_and_count_tb_run-stdout.log",
+    coverage = "load_and_count_tb_run-coverage.dat"
 )
