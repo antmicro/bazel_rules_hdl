@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@rules_cc//cc:defs.bzl", "cc_test")
-load("//verilator:defs.bzl", "verilator_cc_binary", "verilator_cc_library")
+load("//verilator:defs.bzl", "verilator_cc_binary", "verilator_cc_library", "verilator_run")
 load("//verilog:defs.bzl", "verilog_library")
 
 package(
@@ -136,4 +136,40 @@ verilator_cc_binary(
     vopts = [
         "--timing",
     ],
+)
+
+verilator_run (
+    name = "tb_run",
+    binary = ":tb_binary",
+    stdout = "tb_run-stdout.log",
+)
+
+verilog_library(
+    name = "load_and_count_tb",
+    srcs = [
+        "load_and_count_tb.sv",
+    ],
+    deps = [
+        ":load_and_count",
+    ],
+)
+
+verilator_cc_binary(
+    name = "load_and_count_tb_binary",
+    copts = [
+        "-std=c++20",
+    ],
+    module = ":load_and_count_tb",
+    module_top = "tb",
+    trace = True,
+    coverage = "all",
+    vopts = [
+        "--timing",
+    ],
+)
+
+verilator_run (
+    name = "load_and_count_tb_run",
+    binary = ":load_and_count_tb_binary",
+    stdout = "load_and_count_tb_run-stdout.log",
 )
