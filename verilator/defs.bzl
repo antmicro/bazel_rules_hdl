@@ -126,7 +126,7 @@ def cc_compile_and_link_binary(ctx, srcs, hdrs, deps, runfiles, includes = [], d
     Returns:
         CCInfo with the compiled binary.
     """
-    cc_toolchain, feature_configuration, compilation_context, compilation_outputs = cc_compile(
+    cc_toolchain, feature_configuration, _, compilation_outputs = cc_compile(
         ctx,
         srcs,
         hdrs,
@@ -270,6 +270,11 @@ verilator_cc_library = rule(
             doc = "List of additional compilation flags",
             default = [],
         ),
+        "coverage": attr.string(
+            doc = "Enable coverage collection",
+            default = "none",
+            values = ["none", "all", "line", "toggle"],
+        ),
         "module": attr.label(
             doc = "The top level module target to verilate.",
             providers = [VerilogInfo],
@@ -282,11 +287,6 @@ verilator_cc_library = rule(
         "trace": attr.bool(
             doc = "Enable tracing for Verilator",
             default = False,
-        ),
-        "coverage": attr.string(
-            doc = "Enable coverage collection",
-            default = "none",
-            values = ["none", "all", "line", "toggle"],
         ),
         "vopts": attr.string_list(
             doc = "Additional command line options to pass to Verilator",
@@ -328,7 +328,7 @@ def _verilator_cc_binary(ctx):
     defines = ["VM_TRACE"] if ctx.attr.trace else []
 
     if ctx.attr.coverage != "none":
-        defines += ["VM_COVERAGE"]
+        defines.append("VM_COVERAGE")
 
     return cc_compile_and_link_binary(
         ctx,
@@ -347,6 +347,11 @@ verilator_cc_binary = rule(
             doc = "List of additional compilation flags",
             default = [],
         ),
+        "coverage": attr.string(
+            doc = "Enable coverage collection",
+            default = "none",
+            values = ["none", "all", "line", "toggle"],
+        ),
         "module": attr.label(
             doc = "The top level module target to verilate.",
             providers = [VerilogInfo],
@@ -359,11 +364,6 @@ verilator_cc_binary = rule(
         "trace": attr.bool(
             doc = "Enable tracing for Verilator",
             default = False,
-        ),
-        "coverage": attr.string(
-            doc = "Enable coverage collection",
-            default = "none",
-            values = ["none", "all", "line", "toggle"],
         ),
         "vopts": attr.string_list(
             doc = "Additional command line options to pass to Verilator",
@@ -392,7 +392,6 @@ verilator_cc_binary = rule(
 )
 
 def _verilator_run(ctx):
-
     args = []
     outputs = list(ctx.outputs.outs)
 
@@ -442,26 +441,26 @@ def _verilator_run(ctx):
 verilator_run = rule(
     implementation = _verilator_run,
     attrs = {
+        "args": attr.string_list(
+            doc = "Arguments to be passed to the binary (optional)",
+        ),
         "binary": attr.label(
             doc = "Verilated binary to run",
             mandatory = True,
             executable = True,
             cfg = "exec",
         ),
+        "coverage": attr.output(
+            doc = "Name of the output coverage data file (optional)",
+        ),
         "outs": attr.output_list(
             doc = "List of simulation products",
-        ),
-        "args": attr.string_list(
-            doc = "Arguments to be passed to the binary (optional)",
-        ),
-        "stdout": attr.output(
-            doc = "Name of the file to capture stdout to (optional)",
         ),
         "stderr": attr.output(
             doc = "Name of the file to capture stderr to (optional)",
         ),
-        "coverage": attr.output(
-            doc = "Name of the output coverage data file (optional)",
+        "stdout": attr.output(
+            doc = "Name of the file to capture stdout to (optional)",
         ),
         "_run_wrapper": attr.label(
             doc = "A wrapper utility for running the binary",
@@ -469,7 +468,7 @@ verilator_run = rule(
             executable = True,
             default = Label("//verilator/private:verilator_run_binary"),
         ),
-    }
+    },
 )
 
 def _verilator_toolchain_impl(ctx):
@@ -494,14 +493,14 @@ verilator_toolchain = rule(
         "extra_vopts": attr.string_list(
             doc = "Extra flags to pass to Verilator compile actions.",
         ),
+        "shared": attr.label(
+            doc = "Verilator shared files",
+            mandatory = True,
+        ),
         "verilator": attr.label(
             doc = "The Verilator binary.",
             executable = True,
             cfg = "exec",
-            mandatory = True,
-        ),
-        "shared": attr.label(
-            doc = "Verilator shared files",
             mandatory = True,
         ),
     },

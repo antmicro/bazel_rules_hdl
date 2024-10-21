@@ -129,16 +129,16 @@ verilator_cc_binary(
     copts = [
         "-std=c++20",
     ],
+    coverage = "all",
     module = ":tb",
     module_top = "tb",
     trace = True,
-    coverage = "all",
     vopts = [
         "--timing",
     ],
 )
 
-verilator_run (
+verilator_run(
     name = "tb_run",
     binary = ":tb_binary",
     stdout = "tb_run-stdout.log",
@@ -159,18 +159,18 @@ verilator_cc_binary(
     copts = [
         "-std=c++20",
     ],
+    coverage = "all",
     module = ":load_and_count_tb",
     module_top = "tb",
     trace = True,
-    coverage = "all",
     vopts = [
         "--timing",
     ],
 )
 
-verilator_run (
+verilator_run(
     name = "load_and_count_tb_run",
     binary = ":load_and_count_tb_binary",
+    coverage = "load_and_count_tb_run-coverage.dat",
     stdout = "load_and_count_tb_run-stdout.log",
-    coverage = "load_and_count_tb_run-coverage.dat"
 )
