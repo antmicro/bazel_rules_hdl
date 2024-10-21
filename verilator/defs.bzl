@@ -414,10 +414,13 @@ def _verilator_run(ctx):
     for arg in ctx.attr.args:
         args.append(arg)
 
+    # Target runfiles
+    runfiles = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()
+
     # Run
     ctx.actions.run(
         outputs = outputs,
-        inputs = [ctx.executable.binary],
+        inputs = runfiles,
         tools = [ctx.executable._run_wrapper],
         executable = ctx.executable._run_wrapper,
         arguments = args,
@@ -427,7 +430,7 @@ def _verilator_run(ctx):
 
     return DefaultInfo(
         files = depset(outputs),
-        runfiles = ctx.runfiles(files = outputs),
+        runfiles = ctx.runfiles(files = runfiles),
     )
 
 verilator_run = rule(
