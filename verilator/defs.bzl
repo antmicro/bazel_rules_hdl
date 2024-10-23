@@ -171,10 +171,14 @@ def _only_hpp(f):
 def _verilate(ctx, vopts = [], copy_shared = False):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
-    transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag])
-    all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs.to_list()]
-    all_data = [verilog_info_struct.data for verilog_info_struct in transitive_srcs.to_list()]
+    transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
+
+    all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs]
+    all_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in transitive_srcs]
+    all_data = [verilog_info_struct.data for verilog_info_struct in transitive_srcs]
+
     all_files = [src for sub_tuple in (all_srcs + all_data) for src in sub_tuple]
+    all_hdrs = [hdr for sub_tuple in all_hdrs for hdr in sub_tuple]
 
     # Filter out .dat files.
     runfiles = []
@@ -184,6 +188,9 @@ def _verilate(ctx, vopts = [], copy_shared = False):
             runfiles.append(file)
         else:
             verilog_files.append(file)
+
+    # Include directories
+    include_dirs = depset([f.dirname for f in (verilog_files + all_hdrs)]).to_list()
 
     verilator_output = ctx.actions.declare_directory(ctx.label.name + "-gen")
 
@@ -197,6 +204,8 @@ def _verilate(ctx, vopts = [], copy_shared = False):
     args.add("--prefix", prefix)
     if ctx.attr.trace:
         args.add("--trace")
+    for pth in include_dirs:
+        args.add("-I" + pth)
     for verilog_file in verilog_files:
         args.add(verilog_file.path)
     args.add_all(verilator_toolchain.extra_vopts)
@@ -215,7 +224,7 @@ def _verilate(ctx, vopts = [], copy_shared = False):
         mnemonic = "VerilatorCompile",
         executable = verilator_toolchain.verilator,
         tools = verilator_toolchain.all_files,
-        inputs = verilog_files,
+        inputs = verilog_files + all_hdrs,
         outputs = [verilator_output],
         progress_message = "[Verilator] Compiling {}".format(ctx.label),
     )
