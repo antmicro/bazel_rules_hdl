@@ -188,6 +188,7 @@ def _verilate(ctx, vopts = []):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
     transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
+
     all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs]
     all_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in transitive_srcs]
     all_data = [verilog_info_struct.data for verilog_info_struct in transitive_srcs]
