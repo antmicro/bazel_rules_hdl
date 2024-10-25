@@ -22,6 +22,7 @@ load(
     "verilator_bisonpre",
     "verilator_build_template",
     "verilator_flexfix",
+    "verilator_root",
     "verilator_version",
     "current_flex_lexer_header"
 )
@@ -248,7 +249,6 @@ cc_library(
         # TODO: We should probably set this later
         "-DDEFENV_SYSTEMC_INCLUDE=\\\"@invalid@\\\"",
         "-DDEFENV_SYSTEMC_LIBDIR=\\\"@invalid@\\\"",
-        "-DDEFENV_VERILATOR_ROOT=\\\"@invalid@\\\"",
         # TODO: Remove these once upstream fixes these warnings
         "-Wno-unneeded-internal-declaration",
     ],
@@ -371,5 +371,11 @@ cc_binary(
 filegroup(
     name = "verilator_shared",
     srcs = glob(["include/*.h"]) + glob(["include/*.cpp"]),
+    visibility = ["//visibility:public"],
+)
+
+verilator_root(
+    name = "verilator_root",
+    include = ["include/verilated_std.sv"],
     visibility = ["//visibility:public"],
 )

@@ -297,3 +297,38 @@ current_flex_lexer_header = rule(
         "@rules_flex//flex:toolchain_type",
     ],
 )
+
+def _verilator_root_impl(ctx):
+    dir = ctx.actions.declare_directory(ctx.label.name)
+
+    include_path = dir.path + "/include"
+    command = [
+        "mkdir -p",
+        include_path,
+        "\n",
+        "cp -L",
+    ]
+    for f in ctx.files.include:
+        command.append(f.path)
+    command.append(include_path)
+
+    ctx.actions.run_shell(
+        command = " ".join(command),
+        inputs = ctx.files.include,
+        outputs = [dir],
+    )
+
+    return [DefaultInfo(
+        files = depset([dir]),
+    )]
+
+verilator_root = rule(
+    doc = "Creates a directory with layout expected for the VERILATOR_ROOT directory",
+    implementation = _verilator_root_impl,
+    attrs = {
+        "include": attr.label_list(
+            allow_files = True,
+            mandatory = True,
+        ),
+    },
+)

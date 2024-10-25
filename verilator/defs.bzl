@@ -168,11 +168,10 @@ def _only_hpp(f):
         return f.path
     return None
 
-def _verilate(ctx, vopts = [], copy_shared = False):
+def _verilate(ctx, vopts = [], copy_shared = True):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
     transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
-
     all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs]
     all_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in transitive_srcs]
     all_data = [verilog_info_struct.data for verilog_info_struct in transitive_srcs]
@@ -197,7 +196,6 @@ def _verilate(ctx, vopts = [], copy_shared = False):
     prefix = "V" + ctx.attr.module_top
 
     args = ctx.actions.args()
-    args.add("--no-std")
     args.add("--cc")
     args.add("--Mdir", verilator_output.path)
     args.add("--top-module", ctx.attr.module_top)
@@ -224,6 +222,7 @@ def _verilate(ctx, vopts = [], copy_shared = False):
         mnemonic = "VerilatorCompile",
         executable = verilator_toolchain.verilator,
         tools = verilator_toolchain.all_files,
+        env = _verilator_toolchain_env(verilator_toolchain),
         inputs = verilog_files + all_hdrs,
         outputs = [verilator_output],
         progress_message = "[Verilator] Compiling {}".format(ctx.label),
@@ -480,12 +479,25 @@ verilator_run = rule(
     },
 )
 
+def _verilator_toolchain_env(toolchain):
+    root_files = toolchain.root.files.to_list()
+    if len(root_files) != 1:
+        fail("It's expected to have only one File (path to directory) as the root attribute of VerilatorToolchain")
+
+    return {
+        "VERILATOR_ROOT": root_files[0].path,
+    }
+
 def _verilator_toolchain_impl(ctx):
-    all_files = ctx.attr.verilator[DefaultInfo].default_runfiles.files
+    all_files = depset(transitive = [
+        ctx.attr.verilator[DefaultInfo].default_runfiles.files,
+        ctx.attr.root.files,
+    ])
 
     return [platform_common.ToolchainInfo(
         verilator = ctx.executable.verilator,
         shared = ctx.attr.shared,
+        root = ctx.attr.root,
         deps = ctx.attr.deps,
         extra_vopts = ctx.attr.extra_vopts,
         all_files = all_files,
@@ -504,6 +516,10 @@ verilator_toolchain = rule(
         ),
         "shared": attr.label(
             doc = "Verilator shared files",
+            mandatory = True,
+        ),
+        "root": attr.label(
+            doc = "Target generated using verilator_root rule",
             mandatory = True,
         ),
         "verilator": attr.label(
