@@ -7,7 +7,7 @@ cc_binary(
 )
 
 py_binary(
-    name = "verilator_run_binary",
-    srcs = ["verilator_run_binary.py"],
+    name = "verilator_run_wrapper",
+    srcs = ["verilator_run_wrapper.py"],
     visibility = ["//visibility:public"],
 )
