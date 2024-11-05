@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-A wrapper to run verilated binaries.
+A wrapper to run binaries.
 
-A wrapper is needed for capturing simulation logs. Bazel can't do that on its
+A wrapper is needed for capturing stdout/stderr. Bazel can't do that on its
 own yet. See https://github.com/bazelbuild/bazel/issues/5511
 """
 import sys
@@ -52,7 +52,9 @@ def main():
     print(f"Running '{binary}' with {args}")
     print(f" stdout  : {ns.stdout}")
     print(f" stderr  : {ns.stderr}")
-    print(f" coverage: {ns.coverage}")
+
+    if ns.coverage:
+        print(f" coverage: {ns.coverage}")
 
     # Run the process, capture output
     o = open(ns.stdout, "w") if ns.stdout else None

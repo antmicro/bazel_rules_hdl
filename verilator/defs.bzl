@@ -492,7 +492,7 @@ verilator_run = rule(
             doc = "A wrapper utility for running the binary",
             cfg = "exec",
             executable = True,
-            default = Label("//verilator/private:verilator_run_binary"),
+            default = Label("//verilator/private:verilator_run_wrapper"),
         ),
     },
 )
