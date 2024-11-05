@@ -184,6 +184,15 @@ def _copy_action(ctx, suffix, files, map_each):
 
     return dir
 
+def _verilator_toolchain_env(toolchain):
+    root_files = toolchain.root.files.to_list()
+    if len(root_files) != 1:
+        fail("It's expected to have only one File (path to directory) as the root attribute of VerilatorToolchain")
+
+    return {
+        "VERILATOR_ROOT": root_files[0].path,
+    }
+
 def _verilate(ctx, vopts = []):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
@@ -497,14 +506,89 @@ verilator_run = rule(
     },
 )
 
-def _verilator_toolchain_env(toolchain):
-    root_files = toolchain.root.files.to_list()
-    if len(root_files) != 1:
-        fail("It's expected to have only one File (path to directory) as the root attribute of VerilatorToolchain")
+def _verilator_lint(ctx):
+    verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
-    return {
-        "VERILATOR_ROOT": root_files[0].path,
-    }
+    # Get all sources
+    transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag])
+    all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs.to_list()]
+    all_files = [src for sub_tuple in all_srcs for src in sub_tuple]
+
+    # Filter out .dat files.
+    verilog_files = []
+    for file in all_files:
+        if file.extension not in _RUNFILES:
+            verilog_files.append(file)
+
+    # Base args
+    args = ctx.actions.args()
+    args.add(verilator_toolchain.verilator.path)
+    args.add("--no-std")
+    args.add("--lint-only")
+
+    # Sources
+    for verilog_file in verilog_files:
+        args.add(verilog_file.path)
+
+    # Toolchain and rule options
+    args.add_all(verilator_toolchain.extra_vopts)
+    args.add_all(ctx.attr.vopts, expand_directories = False)
+
+    # Capture stderr to the log file
+    args.add("--stderr")
+    if ctx.outputs.log:
+        args.add(ctx.outputs.log.path)
+        outputs = [ctx.outputs.log]
+    else:
+        log_file = ctx.actions.declare_file(ctx.label.name + ".log")
+        args.add(log_file.path)
+        outputs = [log_file]
+
+    # Run
+    ctx.actions.run(
+        outputs = outputs,
+        inputs = verilog_files,
+        tools = [verilator_toolchain.verilator, ctx.executable._run_wrapper],
+        env = _verilator_toolchain_env(verilator_toolchain),
+        executable = ctx.executable._run_wrapper,
+        arguments = [args],
+        mnemonic = "VerilatorLint",
+        progress_message = "[Verilator] Linting {}".format(ctx.label),
+        use_default_shell_env = False,
+    )
+
+    return DefaultInfo(
+        files = depset(outputs),
+        runfiles = ctx.runfiles(files = verilog_files),
+    )
+
+verilator_lint = rule(
+    implementation = _verilator_lint,
+    attrs = {
+        "log": attr.output(
+            doc = "Name of the output log file. Defaults to '<name>.log'",
+        ),
+        "module": attr.label(
+            doc = "The top level module target to verilate.",
+            providers = [VerilogInfo],
+            mandatory = True,
+        ),
+        "vopts": attr.string_list(
+            doc = "Additional command line options to pass to Verilator",
+            default = ["-Wall"],
+        ),
+        "_run_wrapper": attr.label(
+            doc = "A wrapper utility for running verilator",
+            cfg = "exec",
+            executable = True,
+            default = Label("//verilator/private:verilator_run_wrapper"),
+        ),
+    },
+    toolchains = [
+        "@rules_hdl//verilator:toolchain_type",
+    ],
+)
+>>>>>>> cc5a7ef (Add rule for running Verilator as a linter)
 
 def _verilator_toolchain_impl(ctx):
     all_files = depset(transitive = [
