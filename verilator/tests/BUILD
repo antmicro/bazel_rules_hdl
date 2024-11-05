@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@rules_cc//cc:defs.bzl", "cc_test")
-load("//verilator:defs.bzl", "verilator_cc_binary", "verilator_cc_library", "verilator_run")
+load("//verilator:defs.bzl", "verilator_cc_binary", "verilator_cc_library", "verilator_lint", "verilator_run")
 load("//verilog:defs.bzl", "verilog_library")
 
 package(
@@ -101,6 +101,9 @@ verilator_cc_library(
     name = "nested_module_2_verilator",
     module = ":nested_module_2",
     module_top = "nested_module_2",
+    vopts = [
+        "--Wno-fatal",
+    ],
 )
 
 cc_test(
@@ -167,4 +170,14 @@ verilator_run(
     binary = ":load_and_count_tb_binary",
     coverage = "load_and_count_tb_run-coverage.dat",
     stdout = "load_and_count_tb_run-stdout.log",
+)
+
+verilator_lint(
+    name = "nested_module_2_verilator_lint",
+    log = "lint.log",
+    module = ":nested_module_2",
+    vopts = [
+        "-Wall",
+        "-Wno-fatal",
+    ],
 )

@@ -512,7 +512,10 @@ def _verilator_lint(ctx):
     # Get all sources
     transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag])
     all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs.to_list()]
+    all_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in transitive_srcs.to_list()]
+
     all_files = [src for sub_tuple in all_srcs for src in sub_tuple]
+    all_hdrs = [hdr for sub_tuple in all_hdrs for hdr in sub_tuple]
 
     # Filter out .dat files.
     verilog_files = []
@@ -520,12 +523,18 @@ def _verilator_lint(ctx):
         if file.extension not in _RUNFILES:
             verilog_files.append(file)
 
+
+    # Include directories
+    include_dirs = depset([f.dirname for f in (verilog_files + all_hdrs)]).to_list()
+
     # Base args
     args = ctx.actions.args()
     args.add(verilator_toolchain.verilator.path)
-    args.add("--no-std")
     args.add("--lint-only")
 
+    # Include dirs
+    for pth in include_dirs:
+        args.add("-I" + pth)
     # Sources
     for verilog_file in verilog_files:
         args.add(verilog_file.path)
@@ -548,13 +557,12 @@ def _verilator_lint(ctx):
     ctx.actions.run(
         outputs = outputs,
         inputs = verilog_files,
-        tools = [verilator_toolchain.verilator, ctx.executable._run_wrapper],
+        tools = [verilator_toolchain.all_files, ctx.executable._run_wrapper],
         env = _verilator_toolchain_env(verilator_toolchain),
         executable = ctx.executable._run_wrapper,
         arguments = [args],
         mnemonic = "VerilatorLint",
         progress_message = "[Verilator] Linting {}".format(ctx.label),
-        use_default_shell_env = False,
     )
 
     return DefaultInfo(
@@ -588,7 +596,6 @@ verilator_lint = rule(
         "@rules_hdl//verilator:toolchain_type",
     ],
 )
->>>>>>> cc5a7ef (Add rule for running Verilator as a linter)
 
 def _verilator_toolchain_impl(ctx):
     all_files = depset(transitive = [
