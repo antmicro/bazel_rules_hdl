@@ -186,7 +186,7 @@ def _copy_action(ctx, suffix, files, map_each):
 
     return dir
 
-def _verilate(ctx, vopts = [], copy_shared = True):
+def _verilate(ctx, vopts = []):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
     transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
@@ -251,11 +251,7 @@ def _verilate(ctx, vopts = [], copy_shared = True):
         env = env,
     )
 
-    if copy_shared:
-        copy_input = depset([verilator_output] + verilator_toolchain.shared[DefaultInfo].files.to_list())
-    else:
-        copy_input = depset([verilator_output])
-
+    copy_input = depset([verilator_output], transitive = [verilator_toolchain.shared[DefaultInfo].files])
 
     verilator_output_cpp = _copy_action(ctx, "_cpp", copy_input, _only_cpp)
     verilator_output_hpp = _copy_action(ctx, "_h", copy_input, _only_hpp)
@@ -364,7 +360,6 @@ def _verilator_cc_binary(ctx):
     verilator_output_cpp, verilator_output_hpp, runfiles = _verilate(
         ctx,
         vopts = ["--main"],
-        copy_shared = True,
     )
 
     # Do actual compile
