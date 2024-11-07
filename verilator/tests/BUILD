@@ -153,9 +153,6 @@ verilog_library(
 
 verilator_cc_binary(
     name = "load_and_count_tb_binary",
-    copts = [
-        "-std=c++20",
-    ],
     coverage = "all",
     module = ":load_and_count_tb",
     module_top = "tb",

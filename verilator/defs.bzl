@@ -252,6 +252,25 @@ def _verilate(ctx, vopts = [], copy_shared = True):
 
     return verilator_output_cpp, verilator_output_hpp, runfiles
 
+# Options from verilator/include/verilated.mk
+_VERILATOR_DEFAULT_COPTS = [
+    "-std=gnu++20",
+    "-faligned-new",
+    "-fcf-protection=none",
+    "-Wno-bool-operation",
+    "-Wno-shadow",
+    "-Wno-sign-compare",
+    "-Wno-tautological-compare",
+    "-Wno-uninitialized",
+    "-Wno-unused-but-set-parameter",
+    "-Wno-unused-but-set-variable",
+    "-Wno-unused-parameter",
+    "-Wno-unused-variable",
+    "-Wextra",
+    "-Wfloat-conversion",
+    "-Wlogical-op",
+]
+
 def _verilator_cc_library(ctx):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
@@ -276,7 +295,7 @@ verilator_cc_library = rule(
     attrs = {
         "copts": attr.string_list(
             doc = "List of additional compilation flags",
-            default = [],
+            default = _VERILATOR_DEFAULT_COPTS,
         ),
         "coverage": attr.string(
             doc = "Enable coverage collection",
@@ -353,7 +372,7 @@ verilator_cc_binary = rule(
     attrs = {
         "copts": attr.string_list(
             doc = "List of additional compilation flags",
-            default = [],
+            default = _VERILATOR_DEFAULT_COPTS,
         ),
         "coverage": attr.string(
             doc = "Enable coverage collection",
