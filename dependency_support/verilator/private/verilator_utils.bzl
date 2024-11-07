@@ -301,21 +301,18 @@ current_flex_lexer_header = rule(
 def _verilator_root_impl(ctx):
     dir = ctx.actions.declare_directory(ctx.label.name)
 
-    include_path = dir.path + "/include"
-    command = [
-        "mkdir -p",
-        include_path,
-        "\n",
-        "cp -L",
-    ]
-    for f in ctx.files.include:
-        command.append(f.path)
-    command.append(include_path)
+    cp_args = ctx.actions.args()
+    cp_args.add("--append-destination", "include")
+    for file in ctx.files.include:
+        cp_args.add(file.path)
+    cp_args.add(dir.path)
 
-    ctx.actions.run_shell(
-        command = " ".join(command),
+    ctx.actions.run(
+        mnemonic = "VerilatorCopyTree",
+        arguments = [cp_args],
         inputs = ctx.files.include,
         outputs = [dir],
+        executable = ctx.executable._copy_tree,
     )
 
     return [DefaultInfo(
@@ -329,6 +326,12 @@ verilator_root = rule(
         "include": attr.label_list(
             allow_files = True,
             mandatory = True,
+        ),
+        "_copy_tree": attr.label(
+            doc = "A tool for copying a tree of files",
+            cfg = "exec",
+            executable = True,
+            default = Label("//common:copy_tree"),
         ),
     },
 )
