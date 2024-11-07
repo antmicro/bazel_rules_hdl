@@ -126,9 +126,6 @@ verilog_library(
 
 verilator_cc_binary(
     name = "tb_binary",
-    copts = [
-        "-std=c++20",
-    ],
     coverage = "all",
     module = ":tb",
     module_top = "tb",
