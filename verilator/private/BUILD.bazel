@@ -1,12 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_binary")
 
 py_binary(
-    name = "verilator_copy_tree",
-    srcs = ["verilator_copy_tree.py"],
-    visibility = ["//visibility:public"],
-)
-
-py_binary(
     name = "verilator_run_binary",
     srcs = ["verilator_run_binary.py"],
     visibility = ["//visibility:public"],

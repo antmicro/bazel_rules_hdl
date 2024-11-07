@@ -168,6 +168,22 @@ def _only_hpp(f):
         return f.path
     return None
 
+def _copy_action(ctx, suffix, files, map_each):
+    dir = ctx.actions.declare_directory(ctx.label.name + suffix)
+
+    args = ctx.actions.args()
+    args.add_all(files, map_each = map_each)
+    args.add(dir.path)
+    ctx.actions.run(
+        mnemonic = "VerilatorCopyTree",
+        arguments = [args],
+        inputs = files,
+        outputs = [dir],
+        executable = ctx.executable._copy_tree,
+    )
+
+    return dir
+
 def _verilate(ctx, vopts = [], copy_shared = True):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
@@ -233,22 +249,9 @@ def _verilate(ctx, vopts = [], copy_shared = True):
     else:
         copy_input = depset([verilator_output])
 
-    verilator_output_cpp = ctx.actions.declare_directory(ctx.label.name + "_cpp")
-    verilator_output_hpp = ctx.actions.declare_directory(ctx.label.name + "_h")
 
-    cp_args = ctx.actions.args()
-    cp_args.add("--src_output", verilator_output_cpp.path)
-    cp_args.add("--hdr_output", verilator_output_hpp.path)
-    cp_args.add_all(copy_input, map_each = _only_cpp, format_each = "--src=%s")
-    cp_args.add_all(copy_input, map_each = _only_hpp, format_each = "--hdr=%s")
-
-    ctx.actions.run(
-        mnemonic = "VerilatorCopyTree",
-        arguments = [cp_args],
-        inputs = copy_input,
-        outputs = [verilator_output_cpp, verilator_output_hpp],
-        executable = ctx.executable._copy_tree,
-    )
+    verilator_output_cpp = _copy_action(ctx, "_cpp", copy_input, _only_cpp)
+    verilator_output_hpp = _copy_action(ctx, "_h", copy_input, _only_hpp)
 
     return verilator_output_cpp, verilator_output_hpp, runfiles
 
@@ -327,7 +330,7 @@ verilator_cc_library = rule(
             doc = "A tool for copying a tree of files",
             cfg = "exec",
             executable = True,
-            default = Label("//verilator/private:verilator_copy_tree"),
+            default = Label("//common:copy_tree"),
         ),
     },
     provides = [
@@ -404,7 +407,7 @@ verilator_cc_binary = rule(
             doc = "A tool for copying a tree of files",
             cfg = "exec",
             executable = True,
-            default = Label("//verilator/private:verilator_copy_tree"),
+            default = Label("//common:copy_tree"),
         ),
     },
     provides = [
