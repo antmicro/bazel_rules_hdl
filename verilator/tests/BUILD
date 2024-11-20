@@ -174,7 +174,6 @@ verilator_run(
 
 verilator_lint(
     name = "nested_module_2_verilator_lint",
-    log = "lint.log",
     module = ":nested_module_2",
     vopts = [
         "-Wall",

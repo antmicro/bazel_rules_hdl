@@ -194,9 +194,7 @@ def _verilator_toolchain_env(toolchain):
     }
 
 def _verilator_args(ctx, srcs, vopts = []):
-    """
-    Given a depset of input files to Verilator returns invocation arguments and
-    list of source, header and run files.
+    """Given a depset of input files to Verilator returns invocation arguments and list of source, header and run files.
     """
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
@@ -540,21 +538,17 @@ def _verilator_lint(ctx):
     vopts = [
         "--lint-only",
     ]
-    args, vlog_srcs, vlog_hdrs, runfiles = _verilator_args(ctx, srcs, vopts)
+    args, vlog_srcs, vlog_hdrs, _ = _verilator_args(ctx, srcs, vopts)
 
     # Capture stderr to the log file
+    log_file = ctx.actions.declare_file(ctx.label.name + ".log")
+
     args.add("--stderr")
-    if ctx.outputs.log:
-        args.add(ctx.outputs.log.path)
-        outputs = [ctx.outputs.log]
-    else:
-        log_file = ctx.actions.declare_file(ctx.label.name + ".log")
-        args.add(log_file.path)
-        outputs = [log_file]
+    args.add(log_file.path)
 
     # Run
     ctx.actions.run(
-        outputs = outputs,
+        outputs = [log_file],
         inputs = vlog_srcs + vlog_hdrs,
         tools = [verilator_toolchain.all_files, ctx.executable._run_wrapper],
         env = _verilator_toolchain_env(verilator_toolchain),
@@ -565,16 +559,13 @@ def _verilator_lint(ctx):
     )
 
     return DefaultInfo(
-        files = depset(outputs),
+        files = depset([log_file]),
         runfiles = ctx.runfiles(files = vlog_srcs + vlog_hdrs),
     )
 
 verilator_lint = rule(
     implementation = _verilator_lint,
     attrs = {
-        "log": attr.output(
-            doc = "Name of the output log file. Defaults to '<name>.log'",
-        ),
         "module": attr.label(
             doc = "The top level module target to verilate.",
             providers = [VerilogInfo],
