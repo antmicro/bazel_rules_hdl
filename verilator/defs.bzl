@@ -193,14 +193,17 @@ def _verilator_toolchain_env(toolchain):
         "VERILATOR_ROOT": root_files[0].path,
     }
 
-def _verilate(ctx, vopts = []):
+def _verilator_args(ctx, srcs, vopts = []):
+    """
+    Given a depset of input files to Verilator returns invocation arguments and
+    list of source, header and run files.
+    """
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
-    transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
-
-    all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs]
-    all_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in transitive_srcs]
-    all_data = [verilog_info_struct.data for verilog_info_struct in transitive_srcs]
+    # Get sources and headers
+    all_srcs = [verilog_info_struct.srcs for verilog_info_struct in srcs]
+    all_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in srcs]
+    all_data = [verilog_info_struct.data for verilog_info_struct in srcs]
 
     all_files = [src for sub_tuple in (all_srcs + all_data) for src in sub_tuple]
     all_hdrs = [hdr for sub_tuple in all_hdrs for hdr in sub_tuple]
@@ -217,44 +220,65 @@ def _verilate(ctx, vopts = []):
     # Include directories
     include_dirs = depset([f.dirname for f in (verilog_files + all_hdrs)]).to_list()
 
-    verilator_output = ctx.actions.declare_directory(ctx.label.name + "-gen")
-
-    prefix = "V" + ctx.attr.module_top
-
+    # Args
     args = ctx.actions.args()
-    args.add("--cc")
-    args.add("--Mdir", verilator_output.path)
-    args.add("--top-module", ctx.attr.module_top)
-    args.add("--prefix", prefix)
-    if ctx.attr.trace:
-        args.add("--trace")
-    for pth in include_dirs:
-        args.add("-I" + pth)
-    for verilog_file in verilog_files:
-        args.add(verilog_file.path)
+    args.add_all(vopts)
     args.add_all(verilator_toolchain.extra_vopts)
     args.add_all(ctx.attr.vopts, expand_directories = False)
-    args.add_all(vopts)
+
+    for pth in include_dirs:
+        args.add("-I" + pth)
+
+    for verilog_file in verilog_files:
+        args.add(verilog_file.path)
+
+    # Return args, sources, headers and runfiles
+    return args, verilog_files, all_hdrs, runfiles
+
+def _verilator_cc(ctx, opts = []):
+    verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
+
+    # Sources
+    srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
+
+    output = ctx.actions.declare_directory(ctx.label.name + "-gen")
+    prefix = "V" + ctx.attr.module_top
+
+    # Options
+    vopts = list(opts)
+
+    vopts.extend(["--cc"])
+    vopts.extend(["--Mdir", output.path])
+    vopts.extend(["--top-module", ctx.attr.module_top])
+    vopts.extend(["--prefix", prefix])
+
+    if ctx.attr.trace:
+        vopts.extend(["--trace"])
 
     if ctx.attr.coverage == "all":
-        args.add("--coverage")
+        vopts.extend(["--coverage"])
     if ctx.attr.coverage == "line":
-        args.add("--coverage-line")
+        vopts.extend(["--coverage-line"])
     if ctx.attr.coverage == "toggle":
-        args.add("--coverage-toggle")
+        vopts.extend(["--coverage-toggle"])
 
+    # Assemble Verilator args
+    args, vlog_srcs, vlog_hdrs, runfiles = _verilator_args(ctx, srcs, vopts)
+
+    # Run the action
     ctx.actions.run(
         arguments = [args],
         mnemonic = "VerilatorCompile",
         executable = verilator_toolchain.verilator,
         tools = verilator_toolchain.all_files,
         env = _verilator_toolchain_env(verilator_toolchain),
-        inputs = verilog_files + all_hdrs,
-        outputs = [verilator_output],
+        inputs = vlog_srcs + vlog_hdrs,
+        outputs = [output],
         progress_message = "[Verilator] Compiling {}".format(ctx.label),
     )
 
-    copy_input = depset([verilator_output], transitive = [verilator_toolchain.shared[DefaultInfo].files])
+    # Copy
+    copy_input = depset([output], transitive = [verilator_toolchain.shared[DefaultInfo].files])
 
     verilator_output_cpp = _copy_action(ctx, "_cpp", copy_input, _only_cpp)
     verilator_output_hpp = _copy_action(ctx, "_h", copy_input, _only_hpp)
@@ -284,7 +308,7 @@ def _verilator_cc_library(ctx):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
     # Do verilation
-    verilator_output_cpp, verilator_output_hpp, runfiles = _verilate(ctx)
+    verilator_output_cpp, verilator_output_hpp, runfiles = _verilator_cc(ctx)
 
     # Do actual compile
     defines = ["VM_TRACE"] if ctx.attr.trace else []
@@ -354,9 +378,9 @@ def _verilator_cc_binary(ctx):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
     # Do verilation
-    verilator_output_cpp, verilator_output_hpp, runfiles = _verilate(
+    verilator_output_cpp, verilator_output_hpp, runfiles = _verilator_cc(
         ctx,
-        vopts = ["--main"],
+        opts = ["--main"],
     )
 
     # Do actual compile
@@ -509,39 +533,14 @@ verilator_run = rule(
 def _verilator_lint(ctx):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
-    # Get all sources
-    transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag])
-    all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs.to_list()]
-    all_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in transitive_srcs.to_list()]
-
-    all_files = [src for sub_tuple in all_srcs for src in sub_tuple]
-    all_hdrs = [hdr for sub_tuple in all_hdrs for hdr in sub_tuple]
-
-    # Filter out .dat files.
-    verilog_files = []
-    for file in all_files:
-        if file.extension not in _RUNFILES:
-            verilog_files.append(file)
-
-
-    # Include directories
-    include_dirs = depset([f.dirname for f in (verilog_files + all_hdrs)]).to_list()
-
-    # Base args
-    args = ctx.actions.args()
-    args.add(verilator_toolchain.verilator.path)
-    args.add("--lint-only")
-
-    # Include dirs
-    for pth in include_dirs:
-        args.add("-I" + pth)
     # Sources
-    for verilog_file in verilog_files:
-        args.add(verilog_file.path)
+    srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
 
-    # Toolchain and rule options
-    args.add_all(verilator_toolchain.extra_vopts)
-    args.add_all(ctx.attr.vopts, expand_directories = False)
+    # Assemble Verilator args
+    vopts = [
+        "--lint-only",
+    ]
+    args, vlog_srcs, vlog_hdrs, runfiles = _verilator_args(ctx, srcs, vopts)
 
     # Capture stderr to the log file
     args.add("--stderr")
@@ -556,18 +555,18 @@ def _verilator_lint(ctx):
     # Run
     ctx.actions.run(
         outputs = outputs,
-        inputs = verilog_files,
+        inputs = vlog_srcs + vlog_hdrs,
         tools = [verilator_toolchain.all_files, ctx.executable._run_wrapper],
         env = _verilator_toolchain_env(verilator_toolchain),
         executable = ctx.executable._run_wrapper,
-        arguments = [args],
+        arguments = [verilator_toolchain.verilator.path, args],
         mnemonic = "VerilatorLint",
         progress_message = "[Verilator] Linting {}".format(ctx.label),
     )
 
     return DefaultInfo(
         files = depset(outputs),
-        runfiles = ctx.runfiles(files = verilog_files),
+        runfiles = ctx.runfiles(files = vlog_srcs + vlog_hdrs),
     )
 
 verilator_lint = rule(
@@ -623,12 +622,12 @@ verilator_toolchain = rule(
         "extra_vopts": attr.string_list(
             doc = "Extra flags to pass to Verilator compile actions.",
         ),
-        "shared": attr.label(
-            doc = "Verilator shared files",
-            mandatory = True,
-        ),
         "root": attr.label(
             doc = "Target generated using verilator_root rule",
+            mandatory = True,
+        ),
+        "shared": attr.label(
+            doc = "Verilator shared files",
             mandatory = True,
         ),
         "verilator": attr.label(
