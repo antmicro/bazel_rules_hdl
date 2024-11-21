@@ -551,6 +551,7 @@ def _verilator_lint(ctx):
     vopts = [
         "--lint-only",
     ]
+    vopts.extend(["--top-module", ctx.attr.module_top])
     args, vlog_srcs, vlog_hdrs, _ = _verilator_args(ctx, srcs, vopts)
 
     # Capture stderr to the log file
@@ -582,6 +583,10 @@ verilator_lint = rule(
         "module": attr.label(
             doc = "The top level module target to verilate.",
             providers = [VerilogInfo],
+            mandatory = True,
+        ),
+        "module_top": attr.string(
+            doc = "The name of the verilog module to verilate.",
             mandatory = True,
         ),
         "vopts": attr.string_list(
