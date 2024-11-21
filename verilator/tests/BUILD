@@ -175,6 +175,7 @@ verilator_run(
 verilator_lint(
     name = "nested_module_2_verilator_lint",
     module = ":nested_module_2",
+    module_top = "nested_module_2",
     vopts = [
         "-Wall",
         "-Wno-fatal",
