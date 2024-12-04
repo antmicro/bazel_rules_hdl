@@ -3,7 +3,7 @@ module tb();
     // Waveform
     initial begin : proc_waveform
         string vcd_file = "dump.vcd";
-        if ($value$plusargs("vcd=%s", vcd_file)) begin
+        if ($value$plusargs("trace=%s", vcd_file)) begin
             $display(vcd_file);
             $dumpfile(vcd_file);
             $dumpvars();

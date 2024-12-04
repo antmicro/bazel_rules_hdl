@@ -17,7 +17,9 @@
 
 load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 load("@rules_cc//cc:defs.bzl", "CcInfo")
+load("//common:providers.bzl", "LogInfo", "WaveformInfo")
 load("//verilog:defs.bzl", "VerilogInfo")
+load("providers.bzl", "RawCoverageInfo", "VerilatedBinaryInfo")
 
 def cc_compile(ctx, srcs, hdrs, deps, includes = [], defines = []):
     """Compile C++ sources
@@ -387,7 +389,7 @@ def _verilator_cc_binary(ctx):
     if ctx.attr.coverage != "none":
         defines.append("VM_COVERAGE")
 
-    return cc_compile_and_link_binary(
+    res = cc_compile_and_link_binary(
         ctx,
         srcs = [verilator_output_cpp],
         hdrs = [verilator_output_hpp],
@@ -396,6 +398,8 @@ def _verilator_cc_binary(ctx):
         includes = [verilator_output_hpp.path],
         deps = verilator_toolchain.deps,
     )
+
+    return res + [VerilatedBinaryInfo(coverage = ctx.attr.coverage, trace = ctx.attr.trace)]
 
 verilator_cc_binary = rule(
     implementation = _verilator_cc_binary,
@@ -439,6 +443,7 @@ verilator_cc_binary = rule(
     },
     provides = [
         DefaultInfo,
+        VerilatedBinaryInfo,
     ],
     executable = True,
     toolchains = [
@@ -449,25 +454,28 @@ verilator_cc_binary = rule(
 )
 
 def _verilator_run(ctx):
+    res = []
     args = []
     outputs = list(ctx.outputs.outs)
 
-    # Options for capturing stdout/stderr
-    if ctx.outputs.stdout:
-        outputs.append(ctx.outputs.stdout)
-        args.append("--stdout")
-        args.append(ctx.outputs.stdout.path)
+    # Capture log
+    log_file = ctx.actions.declare_file(ctx.label.name + ".log")
+    outputs.append(log_file)
+    args.extend(["--stdout", log_file.path])
 
-    if ctx.outputs.stderr:
-        outputs.append(ctx.outputs.stderr)
-        args.append("--stderr")
-        args.append(ctx.outputs.stderr.path)
+    res.append(LogInfo(
+        file = log_file,
+    ))
 
-    # Options for moving output coverage file
-    if ctx.outputs.coverage:
-        outputs.append(ctx.outputs.coverage)
-        args.append("--coverage")
-        args.append(ctx.outputs.coverage.path)
+    # Move coverage data if applicable
+    if ctx.attr.binary[VerilatedBinaryInfo].coverage != "none":
+        dat_file = ctx.actions.declare_file(ctx.label.name + ".dat")
+        outputs.append(dat_file)
+        args.extend(["--coverage", dat_file.path])
+
+        res.append(RawCoverageInfo(
+            file = dat_file,
+        ))
 
     # Target binary name
     args.append(ctx.executable.binary.path)
@@ -475,6 +483,17 @@ def _verilator_run(ctx):
     # Target binary args
     for arg in ctx.attr.args:
         args.append(arg)
+
+    # Waveform trace. Use plusargs mechanism to tell the simulation where write
+    # the trace to
+    if ctx.attr.binary[VerilatedBinaryInfo].trace:
+        trace_file = ctx.actions.declare_file(ctx.label.name + ".vcd")
+        outputs.append(trace_file)
+        args.append("+" + ctx.attr.trace_plusarg + "=" + trace_file.path)
+
+        res.append(WaveformInfo(
+            file = trace_file,
+        ))
 
     # Target runfiles
     runfiles = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()
@@ -490,10 +509,12 @@ def _verilator_run(ctx):
         use_default_shell_env = False,
     )
 
-    return DefaultInfo(
+    res.append(DefaultInfo(
         files = depset(outputs),
         runfiles = ctx.runfiles(files = runfiles),
-    )
+    ))
+
+    return res
 
 verilator_run = rule(
     implementation = _verilator_run,
@@ -506,18 +527,16 @@ verilator_run = rule(
             mandatory = True,
             executable = True,
             cfg = "exec",
-        ),
-        "coverage": attr.output(
-            doc = "Name of the output coverage data file (optional)",
+            providers = [
+                VerilatedBinaryInfo,
+            ],
         ),
         "outs": attr.output_list(
             doc = "List of simulation products",
         ),
-        "stderr": attr.output(
-            doc = "Name of the file to capture stderr to (optional)",
-        ),
-        "stdout": attr.output(
-            doc = "Name of the file to capture stdout to (optional)",
+        "trace_plusarg": attr.string(
+            doc = "Name of a plusarg parameter that will hold trace file name",
+            default = "trace",
         ),
         "_run_wrapper": attr.label(
             doc = "A wrapper utility for running the binary",
@@ -526,6 +545,10 @@ verilator_run = rule(
             default = Label("//verilator/private:verilator_run_wrapper"),
         ),
     },
+    provides = [
+        DefaultInfo,
+        LogInfo,
+    ],
 )
 
 def _verilator_lint(ctx):
@@ -559,10 +582,15 @@ def _verilator_lint(ctx):
         progress_message = "[Verilator] Linting {}".format(ctx.label),
     )
 
-    return DefaultInfo(
-        files = depset([log_file]),
-        runfiles = ctx.runfiles(files = vlog_srcs + vlog_hdrs),
-    )
+    return [
+        DefaultInfo(
+            files = depset([log_file]),
+            runfiles = ctx.runfiles(files = vlog_srcs + vlog_hdrs),
+        ),
+        LogInfo(
+            file = log_file,
+        ),
+    ]
 
 verilator_lint = rule(
     implementation = _verilator_lint,
@@ -587,6 +615,10 @@ verilator_lint = rule(
             default = Label("//verilator/private:verilator_run_wrapper"),
         ),
     },
+    provides = [
+        DefaultInfo,
+        LogInfo,
+    ],
     toolchains = [
         "@rules_hdl//verilator:toolchain_type",
     ],
