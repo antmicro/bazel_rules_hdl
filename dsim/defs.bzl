@@ -12,11 +12,15 @@
 
 """Functions for DSIM."""
 
+load("//common:providers.bzl", "LogInfo", "WaveformInfo")
 load("//verilog:defs.bzl", "VerilogInfo")
+load("providers.bzl", "RawCoverageInfo", "ReportInfo")
 
 _RUNFILES = ["dat", "mem"]
 
 def _dsim_run(ctx):
+    res = []
+
     transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
 
     all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs]
@@ -44,6 +48,7 @@ def _dsim_run(ctx):
 
     # Log file
     dsim_log = ctx.actions.declare_file("{}.log".format(ctx.label.name))
+    res.append(LogInfo(file = dsim_log))
 
     # Build DSim command
     command = "source " + ctx.file.dsim_env.path + " && "
@@ -63,6 +68,17 @@ def _dsim_run(ctx):
     outputs = [dsim_log] + ctx.outputs.outs
     generated_files = [dsim_log]
 
+    # Waveform
+    if not ctx.attr.trace_plusarg == "":
+        trace_file = ctx.actions.declare_file(ctx.label.name + ".vcd")
+        outputs.append(trace_file)
+        command += " +" + ctx.attr.trace_plusarg + "=" + trace_file.path
+
+        generated_files.append(trace_file)
+        res.append(WaveformInfo(
+            file = trace_file,
+        ))
+
     # Coverage file
     if ctx.attr.enable_code_coverage:
         dsim_cov = ctx.actions.declare_file("{}.db".format(ctx.label.name))
@@ -81,11 +97,15 @@ def _dsim_run(ctx):
         outputs.append(dsim_cov)
         generated_files.append(dsim_cov)
 
+        res.append(RawCoverageInfo(file = dsim_cov))
+
         if ctx.attr.code_coverage_report:
             dsim_report = ctx.actions.declare_directory("{}_report".format(ctx.label.name))
             command += " && dcreport -out_dir {} {}".format(dsim_report.path, dsim_cov.path)
             outputs.append(dsim_report)
             generated_files.append(dsim_report)
+
+            res.append(ReportInfo(path = dsim_report))
 
     ctx.actions.run_shell(
         outputs = outputs,
@@ -94,7 +114,7 @@ def _dsim_run(ctx):
         command = command,
     )
 
-    return [
+    return res + [
         DefaultInfo(
             files = depset(generated_files),
             runfiles = ctx.runfiles(files = runfiles),
@@ -142,5 +162,13 @@ dsim_run = rule(
         "outs": attr.output_list(
             doc = "List of simulation products",
         ),
+        "trace_plusarg": attr.string(
+            doc = "Name of a plusarg parameter to use to pass waveform trace file name",
+            default = "",
+        ),
     },
+    provides = [
+        DefaultInfo,
+        LogInfo,
+    ],
 )
