@@ -144,7 +144,6 @@ verilator_cc_binary(
 verilator_run(
     name = "tb_run",
     binary = ":tb_binary",
-    stdout = "tb_run-stdout.log",
 )
 
 verilog_library(
@@ -171,8 +170,6 @@ verilator_cc_binary(
 verilator_run(
     name = "load_and_count_tb_run",
     binary = ":load_and_count_tb_binary",
-    coverage = "load_and_count_tb_run-coverage.dat",
-    stdout = "load_and_count_tb_run-stdout.log",
 )
 
 verilator_lint(
