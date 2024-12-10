@@ -402,7 +402,7 @@ def _verilator_cc_binary(ctx):
     if ctx.attr.coverage != "none":
         defines.append("VM_COVERAGE")
 
-    res = cc_compile_and_link_binary(
+    result = cc_compile_and_link_binary(
         ctx,
         srcs = [verilator_output_cpp],
         hdrs = [verilator_output_hpp],
@@ -412,7 +412,7 @@ def _verilator_cc_binary(ctx):
         deps = verilator_toolchain.deps,
     )
 
-    return res + [VerilatedBinaryInfo(coverage = ctx.attr.coverage, trace = ctx.attr.trace)]
+    return result + [VerilatedBinaryInfo(coverage = ctx.attr.coverage, trace = ctx.attr.trace)]
 
 verilator_cc_binary = rule(
     implementation = _verilator_cc_binary,
@@ -467,7 +467,7 @@ verilator_cc_binary = rule(
 )
 
 def _verilator_run(ctx):
-    res = []
+    result = []
     args = []
     outputs = list(ctx.outputs.outs)
 
@@ -476,8 +476,8 @@ def _verilator_run(ctx):
     outputs.append(log_file)
     args.extend(["--stdout", log_file.path])
 
-    res.append(LogInfo(
-        file = log_file,
+    result.append(LogInfo(
+        files = [log_file],
     ))
 
     # Move coverage data if applicable
@@ -486,8 +486,8 @@ def _verilator_run(ctx):
         outputs.append(dat_file)
         args.extend(["--coverage", dat_file.path])
 
-        res.append(RawCoverageInfo(
-            file = dat_file,
+        result.append(RawCoverageInfo(
+            files = [dat_file],
         ))
 
     # Target binary name
@@ -504,8 +504,8 @@ def _verilator_run(ctx):
         outputs.append(trace_file)
         args.append("+" + ctx.attr.trace_plusarg + "=" + trace_file.path)
 
-        res.append(WaveformInfo(
-            file = trace_file,
+        result.append(WaveformInfo(
+            files = [trace_file],
         ))
 
     # Target runfiles
@@ -522,12 +522,12 @@ def _verilator_run(ctx):
         use_default_shell_env = False,
     )
 
-    res.append(DefaultInfo(
+    result.append(DefaultInfo(
         files = depset(outputs),
         runfiles = ctx.runfiles(files = runfiles),
     ))
 
-    return res
+    return result
 
 verilator_run = rule(
     implementation = _verilator_run,
@@ -601,7 +601,7 @@ def _verilator_lint(ctx):
             runfiles = ctx.runfiles(files = vlog_srcs + vlog_hdrs),
         ),
         LogInfo(
-            file = log_file,
+            files = [log_file],
         ),
     ]
 

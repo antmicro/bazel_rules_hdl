@@ -10,12 +10,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Providers for Verilator run targets"""
+"""Providers for DSim run targets"""
 
 RawCoverageInfo = provider(
     doc = "Raw coverage data written by DSim",
     fields = {
-        "file": "Coverage data file",
+        "files": "Coverage data files",
     },
 )
 

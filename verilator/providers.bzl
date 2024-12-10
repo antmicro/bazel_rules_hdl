@@ -23,13 +23,13 @@ VerilatedBinaryInfo = provider(
 RawCoverageInfo = provider(
     doc = "Raw coverage data written by a verilated model",
     fields = {
-        "file": "Coverage data file",
+        "files": "Coverage data files",
     },
 )
 
 CoverageInfo = provider(
     doc = "Coverage data converted using 'verilator_convert' utility",
     fields = {
-        "file": "Coverage info file",
+        "files": "Coverage info files",
     },
 )
