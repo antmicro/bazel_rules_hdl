@@ -19,7 +19,7 @@ load("providers.bzl", "RawCoverageInfo", "ReportInfo")
 _RUNFILES = ["dat", "mem"]
 
 def _dsim_run(ctx):
-    res = []
+    result = []
 
     transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
 
@@ -48,7 +48,7 @@ def _dsim_run(ctx):
 
     # Log file
     dsim_log = ctx.actions.declare_file("{}.log".format(ctx.label.name))
-    res.append(LogInfo(file = dsim_log))
+    result.append(LogInfo(files = [dsim_log]))
 
     # Build DSim command
     command = "source " + ctx.file.dsim_env.path + " && "
@@ -75,8 +75,8 @@ def _dsim_run(ctx):
         command += " +" + ctx.attr.trace_plusarg + "=" + trace_file.path
 
         generated_files.append(trace_file)
-        res.append(WaveformInfo(
-            file = trace_file,
+        result.append(WaveformInfo(
+            files = [trace_file],
         ))
 
     # Coverage file
@@ -97,7 +97,7 @@ def _dsim_run(ctx):
         outputs.append(dsim_cov)
         generated_files.append(dsim_cov)
 
-        res.append(RawCoverageInfo(file = dsim_cov))
+        result.append(RawCoverageInfo(files = [dsim_cov]))
 
         if ctx.attr.code_coverage_report:
             dsim_report = ctx.actions.declare_directory("{}_report".format(ctx.label.name))
@@ -105,7 +105,7 @@ def _dsim_run(ctx):
             outputs.append(dsim_report)
             generated_files.append(dsim_report)
 
-            res.append(ReportInfo(path = dsim_report))
+            result.append(ReportInfo(path = dsim_report))
 
     ctx.actions.run_shell(
         outputs = outputs,
@@ -114,7 +114,7 @@ def _dsim_run(ctx):
         command = command,
     )
 
-    return res + [
+    return result + [
         DefaultInfo(
             files = depset(generated_files),
             runfiles = ctx.runfiles(files = runfiles),

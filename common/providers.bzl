@@ -15,13 +15,13 @@
 WaveformInfo = provider(
     doc = "Waveform collected during a simulation run",
     fields = {
-        "file": "The waveform file",
+        "files": "Waveform files",
     },
 )
 
 LogInfo = provider(
     doc = "A textual log file provider",
     fields = {
-        "file": "The log file",
+        "files": "Log files",
     },
 )
