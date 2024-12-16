@@ -492,7 +492,7 @@ def _verilator_run(ctx):
         args.append("+" + ctx.attr.trace_plusarg + "=" + trace_file.path)
 
         result.append(WaveformInfo(
-            files = [trace_file],
+            vcd_files = [trace_file],
         ))
 
     # Target runfiles
