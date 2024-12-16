@@ -78,7 +78,7 @@ def _dsim_run(ctx):
 
         generated_files.append(trace_file)
         result.append(WaveformInfo(
-            files = [trace_file],
+            vcd_files = [trace_file],
         ))
 
     # Coverage file
