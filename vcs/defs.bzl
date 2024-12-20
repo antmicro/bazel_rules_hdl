@@ -14,7 +14,7 @@
 
 """Functions for VCS."""
 
-load("//common:providers.bzl", "LogInfo")
+load("//common:providers.bzl", "LogInfo", "WaveformInfo")
 load("//verilog:defs.bzl", "VerilogInfo")
 
 _RUNFILES = ["dat", "mem"]
@@ -63,6 +63,7 @@ def _vcs_binary(ctx):
     command += " -l " + vcs_log.path
     command += " -o " + vcs_out.path
     command += " -top " + ctx.attr.module_top
+    command += " -debug_access -debug_region=cell+encrpt +v2k"
 
     for opt in ctx.attr.opts:
         command += " " + opt
@@ -133,11 +134,24 @@ vcs_binary = rule(
 def _vcs_run(ctx):
     args = []
     outputs = []
+    result = []
 
     # Capture log
     run_log = ctx.actions.declare_file("{}.log".format(ctx.label.name))
     args.extend(["-l", run_log.path])
     outputs.append(run_log)
+
+    # Waveform
+    if ctx.attr.trace:
+        trace_file = ctx.actions.declare_file("{}.vcd".format(ctx.label.name))
+        args.extend(["-vcd", trace_file.path])
+        args.append("+vcs+dumpon+0+0")
+        args.append("+vcs+dumparrays")
+        outputs.append(trace_file)
+
+        result.append(WaveformInfo(
+            vcd_files = depset([trace_file]),
+        ))
 
     # Target binary args
     for arg in ctx.attr.args:
@@ -156,7 +170,7 @@ def _vcs_run(ctx):
         use_default_shell_env = False,
     )
 
-    return [
+    result.extend([
         DefaultInfo(
             files = depset(outputs),
             runfiles = ctx.runfiles(files = runfiles),
@@ -164,7 +178,9 @@ def _vcs_run(ctx):
         LogInfo(
             files = [run_log],
         ),
-    ]
+    ])
+
+    return result
 
 vcs_run = rule(
     implementation = _vcs_run,
@@ -177,6 +193,10 @@ vcs_run = rule(
             mandatory = True,
             executable = True,
             cfg = "exec",
+        ),
+        "trace": attr.bool(
+            doc = "Enable trace output",
+            default = False,
         ),
     },
     provides = [
