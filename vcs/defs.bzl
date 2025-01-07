@@ -144,7 +144,7 @@ def _vcs_run(ctx):
     # Waveform
     if ctx.attr.trace:
         trace_file = ctx.actions.declare_file("{}.vcd".format(ctx.label.name))
-        args.extend(["-vcd", trace_file.path])
+        args.extend(["+vcd="+trace_file.path])
         args.append("+vcs+dumpon+0+0")
         args.append("+vcs+dumparrays")
         outputs.append(trace_file)
