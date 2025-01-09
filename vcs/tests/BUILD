@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_cc//cc:defs.bzl", "cc_test")
 load("//vcs:defs.bzl", "vcs_binary", "vcs_run")
 load("//verilog:defs.bzl", "verilog_library")
 
@@ -28,7 +27,6 @@ verilog_library(
     ],
 )
 
-
 verilog_library(
     name = "tb",
     srcs = [
@@ -41,7 +39,6 @@ verilog_library(
 
 vcs_binary(
     name = "tb_vcs",
-    vcs_env = "//vcs/tests:vcs_env.sh",
     module = ":tb",
     module_top = "tb",
     opts = [
@@ -49,6 +46,7 @@ vcs_binary(
         "+vcs+lic+wait",
         "+error+500",
     ],
+    vcs_env = "//vcs/tests:vcs_env.sh",
     visibility = [
         "//visibility:public",
     ],
