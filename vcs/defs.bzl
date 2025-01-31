@@ -19,6 +19,19 @@ load("//verilog:defs.bzl", "VerilogInfo")
 
 _RUNFILES = ["dat", "mem"]
 _SV_SRC = ["sv", "svh"]
+_ALLOWED_COV_TYPES = ["line", "cond", "fsm", "tgl", "branch", "assert"]
+
+CoverageInfo = provider(
+    doc = "Coverage collected during a simulation run",
+    fields = {
+        "cov_dir": "Coverage directory",
+    },
+)
+
+def fail_on_invalid_coverage_type(cov_types):
+    for cov in cov_types:
+        if cov not in _ALLOWED_COV_TYPES:
+            fail("Unsupported coverage type '{}', must be one of: {}".format(cov, ", ".join(_ALLOWED_COV_TYPES)))
 
 def _vcs_binary(ctx):
     transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
@@ -33,6 +46,7 @@ def _vcs_binary(ctx):
 
     # Filter out .dat files. Check if we have SystemVerilog files.
     runfiles = []
+    result = []
     verilog_files = []
     have_sv = False
     for file in all_files:
@@ -57,6 +71,9 @@ def _vcs_binary(ctx):
     vcs_out = ctx.actions.declare_file(ctx.label.name)
     vcs_runfiles = ctx.actions.declare_directory(ctx.label.name + ".daidir")
 
+    inputs = [ctx.file.vcs_env] + all_hdrs + verilog_files
+    outputs = [vcs_log, vcs_out, vcs_runfiles]
+
     # Format base command
     command = "source " + ctx.file.vcs_env.path + " && "
     command += "vcs"
@@ -73,6 +90,18 @@ def _vcs_binary(ctx):
     if have_sv and "-sverilog" not in ctx.attr.opts:
         command += " -sverilog"
 
+    # Coverage
+    produce_coverage = len(ctx.attr.coverage) > 0
+    fail_on_invalid_coverage_type(ctx.attr.coverage)
+
+    if produce_coverage:
+        vcs_cov_dir = ctx.actions.declare_directory("{}.vdb".format(ctx.label.name))
+        outputs.append(vcs_cov_dir)
+        result.append(CoverageInfo(
+            cov_dir = vcs_cov_dir,
+        ))
+        command += " -cm " + "+".join(ctx.attr.coverage)
+
     # Include dirs
     command += " +incdir"
     for include_dir in include_dirs:
@@ -83,9 +112,6 @@ def _vcs_binary(ctx):
         command += " " + verilog_file.path
 
     # Run VCS
-    inputs = [ctx.file.vcs_env] + all_hdrs + verilog_files
-    outputs = [vcs_log, vcs_out, vcs_runfiles]
-
     ctx.actions.run_shell(
         outputs = outputs,
         inputs = inputs,
@@ -93,7 +119,7 @@ def _vcs_binary(ctx):
         command = command,
     )
 
-    return [
+    result.extend([
         DefaultInfo(
             executable = vcs_out,
             runfiles = ctx.runfiles(files = runfiles + [vcs_runfiles]),
@@ -101,11 +127,18 @@ def _vcs_binary(ctx):
         LogInfo(
             files = [vcs_log],
         ),
-    ]
+    ])
+
+    return result
 
 vcs_binary = rule(
     implementation = _vcs_binary,
     attrs = {
+        "coverage": attr.string_list(
+            doc = "Types of coverage to collect. Allowed values are: " +
+                  ", ".join(_ALLOWED_COV_TYPES) + ". " +
+                  "These get passed to the -cm flag",
+        ),
         "module": attr.label(
             doc = "The top level build.",
             providers = [VerilogInfo],
@@ -134,13 +167,19 @@ vcs_binary = rule(
 
 def _vcs_run(ctx):
     args = []
+    vcs_outputs = []
     outputs = []
     result = []
 
     # Capture log
     run_log = ctx.actions.declare_file("{}.log".format(ctx.label.name))
     args.extend(["-l", run_log.path])
+    vcs_outputs.append(run_log)
     outputs.append(run_log)
+
+    # Target binary args
+    for arg in ctx.attr.args:
+        args.append(arg)
 
     # Waveform
     if ctx.attr.trace:
@@ -148,28 +187,56 @@ def _vcs_run(ctx):
         args.extend(["+vcd=" + trace_file.path])
         args.append("+vcs+dumpon+0+0")
         args.append("+vcs+dumparrays")
+        vcs_outputs.append(trace_file)
         outputs.append(trace_file)
 
         result.append(WaveformInfo(
             vcd_files = depset([trace_file]),
         ))
 
-    # Target binary args
-    for arg in ctx.attr.args:
-        args.append(arg)
-
     # Target runfiles
     runfiles = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()
 
+    # Coverage
+    produce_coverage = len(ctx.attr.coverage) > 0
+    fail_on_invalid_coverage_type(ctx.attr.coverage)
+    cov_dir = ctx.attr.binary[CoverageInfo].cov_dir
+    cov_dir_intermediate = ctx.actions.declare_directory("{}_intermediate.vdb".format(ctx.label.name))
+    cov_dir_final = ctx.actions.declare_directory("{}.vdb".format(ctx.label.name))
+
+    if produce_coverage:
+        # Input directory - contains 'auxiliary', 'design' and 'shape' subdirs
+        runfiles.append(cov_dir)
+
+        # Output directory - will contain only 'testdata' subdir
+        vcs_outputs.append(cov_dir_intermediate)
+
+        args += ["-cm", "+".join(ctx.attr.coverage)]
+        args += ["-cm_dir", cov_dir_intermediate.path]
+
     # Run
     ctx.actions.run(
-        outputs = outputs,
+        outputs = vcs_outputs,
         inputs = runfiles,
         executable = ctx.executable.binary,
         arguments = args,
         mnemonic = "RunVCSBinary",
         use_default_shell_env = False,
     )
+
+    if produce_coverage:
+        # Merge cov_dir and cov_dir_intermediate to produce a directory
+        # that contains all subdirs: 'auxiliary', 'design', 'shape' and 'testdata'
+        ctx.actions.run_shell(
+            inputs = [cov_dir, cov_dir_intermediate],
+            outputs = [cov_dir_final],
+            command = "cp -r {}/* {}/* {}".format(
+                cov_dir.path,
+                cov_dir_intermediate.path,
+                cov_dir_final.path,
+            ),
+        )
+        outputs.append(cov_dir_final)
 
     result.extend([
         DefaultInfo(
@@ -194,6 +261,11 @@ vcs_run = rule(
             mandatory = True,
             executable = True,
             cfg = "exec",
+        ),
+        "coverage": attr.string_list(
+            doc = "Types of coverage to collect. Allowed values are: " +
+                  ", ".join(_ALLOWED_COV_TYPES) + ". " +
+                  "These get passed to the -cm flag",
         ),
         "trace": attr.bool(
             doc = "Enable trace output",

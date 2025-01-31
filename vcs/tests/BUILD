@@ -39,6 +39,13 @@ verilog_library(
 
 vcs_binary(
     name = "tb_vcs",
+    coverage = [
+        "line",
+        "cond",
+        "fsm",
+        "tgl",
+        "branch",
+    ],
     module = ":tb",
     module_top = "tb",
     opts = [
@@ -55,6 +62,13 @@ vcs_binary(
 vcs_run(
     name = "tb_vcs_run",
     binary = ":tb_vcs",
+    coverage = [
+        "line",
+        "cond",
+        "fsm",
+        "tgl",
+        "branch",
+    ],
     trace = True,
     visibility = [
         "//visibility:public",
