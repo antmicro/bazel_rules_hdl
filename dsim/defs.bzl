@@ -56,6 +56,7 @@ def _dsim_run(ctx):
     command = "source " + ctx.file.dsim_env.path + " && "
     command += "dsim"
     command += " -l " + dsim_log.path
+    command += " -top " + ctx.attr.module_top
 
     for opt in ctx.attr.opts:
         command += " " + opt
@@ -71,14 +72,14 @@ def _dsim_run(ctx):
     generated_files = [dsim_log]
 
     # Waveform
-    if not ctx.attr.trace_plusarg == "":
-        trace_file = ctx.actions.declare_file(ctx.label.name + ".vcd")
+    if ctx.attr.trace:
+        trace_file = ctx.actions.declare_file("{}.vcd".format(ctx.label.name))
+        command += " -dump-agg "
+        command += " -waves " + trace_file.path
         outputs.append(trace_file)
-        command += " +" + ctx.attr.trace_plusarg + "=" + trace_file.path
 
-        generated_files.append(trace_file)
         result.append(WaveformInfo(
-            vcd_files = [trace_file],
+            vcd_files = depset([trace_file]),
         ))
 
     # Coverage file
@@ -164,9 +165,9 @@ dsim_run = rule(
         "outs": attr.output_list(
             doc = "List of simulation products",
         ),
-        "trace_plusarg": attr.string(
-            doc = "Name of a plusarg parameter to use to pass waveform trace file name",
-            default = "",
+        "trace": attr.bool(
+            doc = "Enable trace output",
+            default = False,
         ),
     },
     provides = [
