@@ -178,3 +178,15 @@ verilator_lint(
         "-Wno-fatal",
     ],
 )
+
+verilator_lint(
+    name = "nested_module_2_verilator_lint_waived",
+    config_files = [
+        "nested_module_2.vlt",
+    ],
+    module = ":nested_module_2",
+    module_top = "nested_module_2",
+    vopts = [
+        "-Wall",
+    ],
+)

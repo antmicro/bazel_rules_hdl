@@ -195,7 +195,7 @@ def _verilator_toolchain_env(toolchain):
         "VERILATOR_ROOT": root_files[0].path,
     }
 
-def _verilator_args(ctx, srcs, vopts = []):
+def _verilator_args(ctx, srcs, vopts = [], config_files = []):
     """Given a depset of input files to Verilator returns invocation arguments and list of source, header and run files.
     """
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
@@ -225,6 +225,12 @@ def _verilator_args(ctx, srcs, vopts = []):
     args.add_all(vopts)
     args.add_all(verilator_toolchain.extra_vopts)
     args.add_all(ctx.attr.vopts, expand_directories = False)
+
+    # Configuration files are passed like source files.
+    # It's recommended to pass them before source files,
+    # because they can refer only to files passed after them.
+    verilog_files += config_files
+    args.add_all(config_files)
 
     for pth in include_dirs:
         args.add("-I" + pth)
@@ -562,7 +568,7 @@ def _verilator_lint(ctx):
         "--lint-only",
     ]
     vopts.extend(["--top-module", ctx.attr.module_top])
-    args, vlog_srcs, vlog_hdrs, _ = _verilator_args(ctx, srcs, vopts)
+    args, vlog_srcs, vlog_hdrs, _ = _verilator_args(ctx, srcs, vopts, ctx.files.config_files)
 
     # Capture stderr to the log file
     log_file = ctx.actions.declare_file(ctx.label.name + ".log")
@@ -595,6 +601,10 @@ def _verilator_lint(ctx):
 verilator_lint = rule(
     implementation = _verilator_lint,
     attrs = {
+        "config_files": attr.label_list(
+            doc = "Configuration files passed to Verilator",
+            allow_files = True,
+        ),
         "module": attr.label(
             doc = "The top level module target to verilate.",
             providers = [VerilogInfo],
