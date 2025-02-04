@@ -60,6 +60,7 @@ def _vcs_binary(ctx):
     # Format base command
     command = "source " + ctx.file.vcs_env.path + " && "
     command += "vcs"
+    command += " +warn=noLINX_KRNL"  # Assuming the warning about kernel version is always redundant
     command += " -l " + vcs_log.path
     command += " -o " + vcs_out.path
     command += " -top " + ctx.attr.module_top
