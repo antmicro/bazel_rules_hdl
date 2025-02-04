@@ -64,7 +64,7 @@ def _vcs_binary(ctx):
     command += " -l " + vcs_log.path
     command += " -o " + vcs_out.path
     command += " -top " + ctx.attr.module_top
-    command += " -debug_access -debug_region=cell+encrpt +v2k"
+    command += " -debug_access -debug_region=cell+encrypt +v2k"
 
     for opt in ctx.attr.opts:
         command += " " + opt
