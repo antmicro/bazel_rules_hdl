@@ -48,6 +48,7 @@ buildifier:
   stage: lint
   variables:
     BUILDIFIER_VERSION: v6.3.3
+  dependencies: []
   script:
     - *install_deps
     - wget https://github.com/bazelbuild/buildtools/releases/download/${BUILDIFIER_VERSION}/buildifier-linux-amd64 -O /usr/local/bin/buildifier
