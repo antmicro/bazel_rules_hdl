@@ -26,11 +26,8 @@ test_verilator:
   script:
     - *install_deps
     - *install_bazelisk
-    - bazel build //verilator/tests:load_and_count_tb_run
-    - bazel build //verilator/tests:nested_module_2_verilator_lint
-    - bazel build //verilator/tests:tb_run
-    - bazel test //verilator/tests:load_and_count_test
-    - bazel test //verilator/tests:nested_module_test
+    - bazel build //verilator/tests:all
+    - bazel test //verilator/tests:all
 
 # Run Verilog rules
 test_verilog:
