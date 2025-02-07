@@ -38,7 +38,7 @@ verilog_library(
 )
 
 vcs_binary(
-    name = "tb_vcs",
+    name = "tb_vcs_fullcov",
     coverage = [
         "line",
         "cond",
@@ -59,9 +59,25 @@ vcs_binary(
     ],
 )
 
+vcs_binary(
+    name = "tb_vcs_nocov",
+    module = ":tb",
+    module_top = "tb",
+    opts = [
+        "-full64",
+        "+vcs+lic+wait",
+        "+error+500",
+    ],
+    vcs_env = "//vcs/tests:vcs_env.sh",
+    visibility = [
+        "//visibility:public",
+    ],
+)
+
+# coverage in vcs_binary and vcs_run
 vcs_run(
-    name = "tb_vcs_run",
-    binary = ":tb_vcs",
+    name = "tb_vcs_run_fullcov",
+    binary = ":tb_vcs_fullcov",
     coverage = [
         "line",
         "cond",
@@ -72,5 +88,34 @@ vcs_run(
     trace = True,
     visibility = [
         "//visibility:public",
+    ],
+)
+
+# no coverage in vcs_binary and vcs_run
+vcs_run(
+    name = "tb_vcs_run_nocov",
+    binary = ":tb_vcs_nocov",
+    trace = True,
+    visibility = [
+        "//visibility:public",
+    ],
+)
+
+# coverage in vcs_binary but no coverage in vcs_run
+vcs_run(
+    name = "tb_vcs_run_missing_run_cov",
+    binary = ":tb_vcs_fullcov",
+    trace = True,
+    visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "tb_vcs_run",
+    srcs = [
+        ":tb_vcs_run_fullcov",
+        ":tb_vcs_run_missing_run_cov",
+        ":tb_vcs_run_nocov",
     ],
 )
