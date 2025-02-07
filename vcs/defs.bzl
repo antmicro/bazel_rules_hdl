@@ -24,9 +24,28 @@ _ALLOWED_COV_TYPES = ["line", "cond", "fsm", "tgl", "branch", "assert"]
 CoverageInfo = provider(
     doc = "Coverage collected during a simulation run",
     fields = {
+        "compiled_types": "Coverage types that the binary was compiled with",
         "cov_dir": "Coverage directory",
     },
 )
+
+def is_subset(superset, subset):
+    """Checks if 'subset' (list) is a subset of 'superset' (list)
+
+    Args:
+        superset: list of arbitrary elements
+        subset: list that is tested for being a subset
+
+    Returns:
+        boolean indicating whether 'subset' is subset of 'superset'
+    """
+
+    # emulate set with dict since it's not available prior to bazel 8
+    sup = {k: True for k in superset}
+    for elem in subset:
+        if not sup.get(elem):
+            return False
+    return True
 
 def fail_on_invalid_coverage_type(cov_types):
     for cov in cov_types:
@@ -46,7 +65,6 @@ def _vcs_binary(ctx):
 
     # Filter out .dat files. Check if we have SystemVerilog files.
     runfiles = []
-    result = []
     verilog_files = []
     have_sv = False
     for file in all_files:
@@ -93,13 +111,10 @@ def _vcs_binary(ctx):
     # Coverage
     produce_coverage = len(ctx.attr.coverage) > 0
     fail_on_invalid_coverage_type(ctx.attr.coverage)
+    vcs_cov_dir = ctx.actions.declare_directory("{}.vdb".format(ctx.label.name))
+    outputs.append(vcs_cov_dir)
 
     if produce_coverage:
-        vcs_cov_dir = ctx.actions.declare_directory("{}.vdb".format(ctx.label.name))
-        outputs.append(vcs_cov_dir)
-        result.append(CoverageInfo(
-            cov_dir = vcs_cov_dir,
-        ))
         command += " -cm " + "+".join(ctx.attr.coverage)
 
     # Include dirs
@@ -119,7 +134,7 @@ def _vcs_binary(ctx):
         command = command,
     )
 
-    result.extend([
+    return [
         DefaultInfo(
             executable = vcs_out,
             runfiles = ctx.runfiles(files = runfiles + [vcs_runfiles]),
@@ -127,9 +142,11 @@ def _vcs_binary(ctx):
         LogInfo(
             files = [vcs_log],
         ),
-    ])
-
-    return result
+        CoverageInfo(
+            compiled_types = ctx.attr.coverage,
+            cov_dir = vcs_cov_dir,
+        ),
+    ]
 
 vcs_binary = rule(
     implementation = _vcs_binary,
@@ -200,17 +217,24 @@ def _vcs_run(ctx):
     # Coverage
     produce_coverage = len(ctx.attr.coverage) > 0
     fail_on_invalid_coverage_type(ctx.attr.coverage)
-    cov_dir = ctx.attr.binary[CoverageInfo].cov_dir
+    cov_info = ctx.attr.binary[CoverageInfo]
+    cov_dir = cov_info.cov_dir
+
+    if not is_subset(cov_info.compiled_types, ctx.attr.coverage):
+        fail("Design was compiled with VCS with incompatible set of coverage types: " +
+             str(cov_info.compiled_types) + " is not a superset of coverage types passed for " +
+             "running the compiled binary: " + str(ctx.attr.coverage) + ". Add missing types to " +
+             "your vcs_binary rule.")
+
     cov_dir_intermediate = ctx.actions.declare_directory("{}_intermediate.vdb".format(ctx.label.name))
-    cov_dir_final = ctx.actions.declare_directory("{}.vdb".format(ctx.label.name))
+
+    # Input directory - contains 'auxiliary', 'design' and 'shape' subdirs
+    runfiles.append(cov_dir)
+
+    # Output directory - will contain only 'testdata' subdir
+    vcs_outputs.append(cov_dir_intermediate)
 
     if produce_coverage:
-        # Input directory - contains 'auxiliary', 'design' and 'shape' subdirs
-        runfiles.append(cov_dir)
-
-        # Output directory - will contain only 'testdata' subdir
-        vcs_outputs.append(cov_dir_intermediate)
-
         args += ["-cm", "+".join(ctx.attr.coverage)]
         args += ["-cm_dir", cov_dir_intermediate.path]
 
@@ -227,6 +251,7 @@ def _vcs_run(ctx):
     if produce_coverage:
         # Merge cov_dir and cov_dir_intermediate to produce a directory
         # that contains all subdirs: 'auxiliary', 'design', 'shape' and 'testdata'
+        cov_dir_final = ctx.actions.declare_directory("{}.vdb".format(ctx.label.name))
         ctx.actions.run_shell(
             inputs = [cov_dir, cov_dir_intermediate],
             outputs = [cov_dir_final],
