@@ -42,6 +42,10 @@ test_verilog:
 test_vcs:
   extends: .vcs_templ
 
+# Runs //dc/tests:* rules
+test_dc:
+  extends: .dc_templ
+
 # Should be aligned with .github/workflows/lint.yml
 buildifier:
   image: debian:12
