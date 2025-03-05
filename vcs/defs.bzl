@@ -184,14 +184,13 @@ vcs_binary = rule(
 
 def _vcs_run(ctx):
     args = []
-    vcs_outputs = []
+    intermediate_outputs = []
     outputs = []
     result = []
 
     # Capture log
     run_log = ctx.actions.declare_file("{}.log".format(ctx.label.name))
     args.extend(["-l", run_log.path])
-    vcs_outputs.append(run_log)
     outputs.append(run_log)
 
     # Target binary args
@@ -204,7 +203,6 @@ def _vcs_run(ctx):
         args.extend(["+vcd=" + trace_file.path])
         args.append("+vcs+dumpon+0+0")
         args.append("+vcs+dumparrays")
-        vcs_outputs.append(trace_file)
         outputs.append(trace_file)
 
         result.append(WaveformInfo(
@@ -232,7 +230,7 @@ def _vcs_run(ctx):
     runfiles.append(cov_dir)
 
     # Output directory - will contain only 'testdata' subdir
-    vcs_outputs.append(cov_dir_intermediate)
+    intermediate_outputs.append(cov_dir_intermediate)
 
     if produce_coverage:
         args += ["-cm", "+".join(ctx.attr.coverage)]
@@ -240,7 +238,7 @@ def _vcs_run(ctx):
 
     # Run
     ctx.actions.run(
-        outputs = vcs_outputs,
+        outputs = outputs + intermediate_outputs,
         inputs = runfiles,
         executable = ctx.executable.binary,
         arguments = args,
