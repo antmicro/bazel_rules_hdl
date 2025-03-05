@@ -100,6 +100,7 @@ def _vcs_binary(ctx):
     command += " -o " + vcs_out.path
     command += " -top " + ctx.attr.module_top
     command += " -debug_access -debug_region=cell+encrypt +v2k"
+    command += " +vcs+vcdpluson"
 
     for opt in ctx.attr.opts:
         command += " " + opt
@@ -198,16 +199,26 @@ def _vcs_run(ctx):
         args.append(arg)
 
     # Waveform
-    if ctx.attr.trace:
-        trace_file = ctx.actions.declare_file("{}.vcd".format(ctx.label.name))
-        args.extend(["+vcd=" + trace_file.path])
+    trace_vpd = []
+    if ctx.attr.trace_vpd:
+        file = ctx.actions.declare_file("{}.vpd".format(ctx.label.name))
+        trace_vpd.append(file)
+        args.append("+vpdfile+" + file.path)
+        args.append("+dumpon")
+
+    trace_vcd = []
+    if ctx.attr.trace_vcd:
+        file = ctx.actions.declare_file("{}.vcd".format(ctx.label.name))
+        trace_vcd.append(file)
+        args.append("+vcd=" + file.path)
         args.append("+vcs+dumpon+0+0")
         args.append("+vcs+dumparrays")
-        outputs.append(trace_file)
 
-        result.append(WaveformInfo(
-            vcd_files = depset([trace_file]),
-        ))
+    outputs += trace_vcd + trace_vpd
+    result.append(WaveformInfo(
+        vpd_files = depset(trace_vpd),
+        vcd_files = depset(trace_vcd),
+    ))
 
     # Target runfiles
     runfiles = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()
@@ -290,13 +301,75 @@ vcs_run = rule(
                   ", ".join(_ALLOWED_COV_TYPES) + ". " +
                   "These get passed to the -cm flag",
         ),
-        "trace": attr.bool(
-            doc = "Enable trace output",
+        "trace_vcd": attr.bool(
+            doc = "Enable trace output in VCD format",
+            default = False,
+        ),
+        "trace_vpd": attr.bool(
+            doc = "Enable trace output in VPD format",
             default = False,
         ),
     },
     provides = [
         DefaultInfo,
         LogInfo,
+    ],
+)
+
+def _convert_vpd2vcd(ctx):
+    command_parts = [
+        "source",
+        ctx.file.vcs_env.path,
+        "&&",
+        "vpd2vcd",
+    ]
+
+    command_parts += ctx.attr.args
+    command_common = " ".join(command_parts)
+    all_vcds = []
+    for vpd in ctx.attr.waveform[WaveformInfo].vpd_files.to_list():
+        vcd_filename = vpd.basename.removesuffix(".vpd") + ".vcd"
+        vcd = ctx.actions.declare_file(vcd_filename)
+        all_vcds.append(vcd)
+
+        ctx.actions.run_shell(
+            outputs = [vcd],
+            inputs = [ctx.file.vcs_env, vpd],
+            progress_message = "Running VPD2VCS: {}".format(ctx.label.name),
+            command = " ".join([command_common, vpd.path, vcd.path]),
+        )
+
+    out_depset = depset(all_vcds)
+    return [
+        DefaultInfo(
+            files = out_depset,
+        ),
+        WaveformInfo(
+            vcd_files = out_depset,
+        ),
+    ]
+
+convert_vpd2vcd = rule(
+    implementation = _convert_vpd2vcd,
+    attrs = {
+        "args": attr.string_list(
+            doc = "Arguments to be passed to the converter",
+        ),
+        "vcs_env": attr.label(
+            doc = "A shell script to source the VCS environment and " +
+                  "point to license server",
+            mandatory = True,
+            allow_single_file = [".sh"],
+        ),
+        "waveform": attr.label(
+            doc = "A target producing VPD waveforms",
+            providers = [
+                WaveformInfo,
+            ],
+        ),
+    },
+    provides = [
+        DefaultInfo,
+        WaveformInfo,
     ],
 )

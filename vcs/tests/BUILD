@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//vcs:defs.bzl", "vcs_binary", "vcs_run")
+load("//vcs:defs.bzl", "convert_vpd2vcd", "vcs_binary", "vcs_run")
 load("//verilog:defs.bzl", "verilog_library")
 
 package(
@@ -85,7 +85,8 @@ vcs_run(
         "tgl",
         "branch",
     ],
-    trace = True,
+    trace_vcd = True,
+    trace_vpd = True,
     visibility = [
         "//visibility:public",
     ],
@@ -95,17 +96,27 @@ vcs_run(
 vcs_run(
     name = "tb_vcs_run_nocov",
     binary = ":tb_vcs_nocov",
-    trace = True,
+    trace_vpd = True,
     visibility = [
         "//visibility:public",
     ],
+)
+
+convert_vpd2vcd(
+    name = "tb_vcs_waveform_conversion",
+    args = [
+        "-full64",
+        "+splitpacked",
+    ],
+    vcs_env = "//vcs/tests:vcs_env.sh",
+    waveform = "tb_vcs_run_nocov",
 )
 
 # coverage in vcs_binary but no coverage in vcs_run
 vcs_run(
     name = "tb_vcs_run_missing_run_cov",
     binary = ":tb_vcs_fullcov",
-    trace = True,
+    trace_vcd = True,
     visibility = [
         "//visibility:public",
     ],
@@ -117,5 +128,6 @@ filegroup(
         ":tb_vcs_run_fullcov",
         ":tb_vcs_run_missing_run_cov",
         ":tb_vcs_run_nocov",
+        ":tb_vcs_waveform_conversion",
     ],
 )
