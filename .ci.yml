@@ -46,6 +46,9 @@ test_vcs:
 test_dc:
   extends: .dc_templ
 
+test_vc_static:
+  extends: .vc_static_templ
+
 # Should be aligned with .github/workflows/lint.yml
 buildifier:
   image: debian:12
