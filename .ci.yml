@@ -1,6 +1,7 @@
 include:
   - project: bazel_rules_hdl-ci-scripts
     file: bazel_rules_hdl.yml
+    ref: 74109-use-vc-static
 
 stages:
   - prepare
