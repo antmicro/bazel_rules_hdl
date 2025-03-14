@@ -52,7 +52,12 @@ vcs_binary(
         "-full64",
         "+vcs+lic+wait",
         "+error+500",
+        "+lint=all",
+        "-error=all",
     ],
+    opts_with_label = {
+        "-msg_config=": "//vcs/tests:config.txt",
+    },
     vcs_env = "//vcs/tests:vcs_env.sh",
     visibility = [
         "//visibility:public",

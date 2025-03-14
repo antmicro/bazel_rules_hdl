@@ -105,6 +105,12 @@ def _vcs_binary(ctx):
     for opt in ctx.attr.opts:
         command += " " + opt
 
+    for (opt, label) in ctx.attr.opts_with_label.items():
+        files = label.files.to_list()
+        inputs.extend(files)
+        for f in files:
+            command += " " + opt + f.path
+
     # Pass -sverilog option if needed
     if have_sv and "-sverilog" not in ctx.attr.opts:
         command += " -sverilog"
@@ -169,6 +175,10 @@ vcs_binary = rule(
         "opts": attr.string_list(
             doc = "Additional command line options to pass to VCS",
             default = [],
+        ),
+        "opts_with_label": attr.string_keyed_label_dict(
+            doc = "Additional command line options concatenated with Label or File",
+            allow_files = True,
         ),
         "vcs_env": attr.label(
             doc = "A shell script to source the VCS environment and " +
