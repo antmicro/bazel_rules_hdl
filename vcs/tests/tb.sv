@@ -29,12 +29,12 @@ module tb ();
 
   // Test procedure
   initial begin : proc_test
-    x = 0;
-    y = 0;
-    carry_in = 0;
+    x = '0;
+    y = '0;
+    carry_in ='0;
     $display("Testing adder:");
-    #10 x = 1;
-    y = 2;
+    #10 x = 8'd1;
+    y = 8'd2;
     #10 $display("x=%d, y=%d, x+y=%d", x, y, sum);
     assert (sum == 3);
     #10 $display("Testing done.");
