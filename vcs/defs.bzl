@@ -125,9 +125,9 @@ def _vcs_binary(ctx):
         command += " -cm " + "+".join(ctx.attr.coverage)
 
     # Include dirs
-    command += " +incdir"
+    # There must be a separate +incdir+<path> for each directory
     for include_dir in include_dirs:
-        command += "+" + include_dir
+        command += " +incdir+" + include_dir
 
     # Sources
     for verilog_file in verilog_files:
