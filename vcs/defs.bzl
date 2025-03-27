@@ -232,6 +232,8 @@ def _vcs_run(ctx):
 
     # Target runfiles
     runfiles = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()
+    for target in ctx.attr.data:
+        runfiles += target[DefaultInfo].files.to_list()
 
     # Coverage
     produce_coverage = len(ctx.attr.coverage) > 0
@@ -310,6 +312,10 @@ vcs_run = rule(
             doc = "Types of coverage to collect. Allowed values are: " +
                   ", ".join(_ALLOWED_COV_TYPES) + ". " +
                   "These get passed to the -cm flag",
+        ),
+        "data": attr.label_list(
+            allow_files = True,
+            doc = "Auxiliary files that this rule depends on",
         ),
         "trace_vcd": attr.bool(
             doc = "Enable trace output in VCD format",
