@@ -60,20 +60,15 @@ def _vcs_binary(ctx):
     all_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in transitive_srcs]
     all_data = [verilog_info_struct.data for verilog_info_struct in transitive_srcs]
 
-    all_files = [src for sub_tuple in (all_srcs + all_data) for src in sub_tuple]
+    all_srcs = [src for sub_tuple in all_srcs for src in sub_tuple]
     all_hdrs = [hdr for sub_tuple in all_hdrs for hdr in sub_tuple]
+    all_data = [dat for sub_tuple in all_data for dat in sub_tuple]
 
-    # Filter out .dat files. Check if we have SystemVerilog files.
-    runfiles = []
-    verilog_files = []
+    # Check sources for SystemVerilog files.
     have_sv = False
-    for file in all_files:
-        if file.extension in _RUNFILES:
-            runfiles.append(file)
-        else:
-            verilog_files.append(file)
-            if file.extension in _SV_SRC:
-                have_sv = True
+    for file in all_srcs:
+        if file.extension in _SV_SRC:
+            have_sv = True
 
     # Check headers for SystemVerilog files
     for file in all_hdrs:
@@ -82,14 +77,14 @@ def _vcs_binary(ctx):
             break
 
     # Include directories
-    include_dirs = depset([f.dirname for f in (verilog_files + all_hdrs)]).to_list()
+    include_dirs = depset([f.dirname for f in (all_srcs + all_hdrs)]).to_list()
 
     # Declare outputs
     vcs_log = ctx.actions.declare_file("{}.log".format(ctx.label.name))
     vcs_out = ctx.actions.declare_file(ctx.label.name)
     vcs_runfiles = ctx.actions.declare_directory(ctx.label.name + ".daidir")
 
-    inputs = [ctx.file.vcs_env] + all_hdrs + verilog_files
+    inputs = [ctx.file.vcs_env] + all_hdrs + all_srcs
     outputs = [vcs_log, vcs_out, vcs_runfiles]
 
     # Format base command
@@ -130,7 +125,7 @@ def _vcs_binary(ctx):
         command += " +incdir+" + include_dir
 
     # Sources
-    for verilog_file in verilog_files:
+    for verilog_file in all_srcs:
         command += " " + verilog_file.path
 
     # Run VCS
@@ -144,7 +139,7 @@ def _vcs_binary(ctx):
     return [
         DefaultInfo(
             executable = vcs_out,
-            runfiles = ctx.runfiles(files = runfiles + [vcs_runfiles]),
+            runfiles = ctx.runfiles(files = all_data + [vcs_runfiles]),
         ),
         LogInfo(
             files = [vcs_log],
