@@ -230,10 +230,14 @@ def _vcs_run(ctx):
         vcd_files = depset(trace_vcd),
     ))
 
-    # Target runfiles
-    runfiles = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()
-    for target in ctx.attr.data:
-        runfiles += target[DefaultInfo].files.to_list()
+    # Binary runfiles
+    inputs = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()
+
+    for (arg, label) in ctx.attr.args_with_label.items():
+        files = label.files.to_list()
+        inputs.extend(files)
+        for f in files:
+            args.append(arg + f.path)
 
     # Coverage
     produce_coverage = len(ctx.attr.coverage) > 0
@@ -250,7 +254,7 @@ def _vcs_run(ctx):
     cov_dir_intermediate = ctx.actions.declare_directory("{}_intermediate.vdb".format(ctx.label.name))
 
     # Input directory - contains 'auxiliary', 'design' and 'shape' subdirs
-    runfiles.append(cov_dir)
+    inputs.append(cov_dir)
 
     # Output directory - will contain only 'testdata' subdir
     intermediate_outputs.append(cov_dir_intermediate)
@@ -262,7 +266,7 @@ def _vcs_run(ctx):
     # Run
     ctx.actions.run(
         outputs = outputs + intermediate_outputs,
-        inputs = runfiles,
+        inputs = inputs,
         executable = ctx.executable.binary,
         arguments = args,
         mnemonic = "RunVCSBinary",
@@ -287,7 +291,6 @@ def _vcs_run(ctx):
     result.extend([
         DefaultInfo(
             files = depset(outputs),
-            runfiles = ctx.runfiles(files = runfiles),
         ),
         LogInfo(
             files = [run_log],
@@ -302,6 +305,10 @@ vcs_run = rule(
         "args": attr.string_list(
             doc = "Arguments to be passed to the binary (optional)",
         ),
+        "args_with_label": attr.string_keyed_label_dict(
+            doc = "Additional command line options concatenated with Label or File",
+            allow_files = True,
+        ),
         "binary": attr.label(
             doc = "Compiled VCS binary to run",
             mandatory = True,
@@ -312,10 +319,6 @@ vcs_run = rule(
             doc = "Types of coverage to collect. Allowed values are: " +
                   ", ".join(_ALLOWED_COV_TYPES) + ". " +
                   "These get passed to the -cm flag",
-        ),
-        "data": attr.label_list(
-            allow_files = True,
-            doc = "Auxiliary files that this rule depends on",
         ),
         "trace_vcd": attr.bool(
             doc = "Enable trace output in VCD format",
