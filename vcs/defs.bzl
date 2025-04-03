@@ -58,10 +58,12 @@ def _vcs_binary(ctx):
     all_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs]
     all_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in transitive_srcs]
     all_data = [verilog_info_struct.data for verilog_info_struct in transitive_srcs]
+    all_plis = [verilog_info_struct.plis for verilog_info_struct in transitive_srcs]
 
     all_srcs = [src for sub_tuple in all_srcs for src in sub_tuple]
     all_hdrs = [hdr for sub_tuple in all_hdrs for hdr in sub_tuple]
     all_data = [dat for sub_tuple in all_data for dat in sub_tuple]
+    all_plis = [pli for sub_tuple in all_plis for pli in sub_tuple]
 
     # Check sources for SystemVerilog files.
     have_sv = False
@@ -127,6 +129,21 @@ def _vcs_binary(ctx):
     for verilog_file in all_srcs:
         command += " " + verilog_file.path
 
+    # PLI libraries
+    pli_runfiles = []
+    for pli in all_plis:
+        for lib in pli.libs.to_list():
+            pli_runfiles.append(lib)
+            command += " " + lib.path
+
+        for tab in pli.tabs.to_list():
+            pli_runfiles.append(tab)
+            command += " -P " + tab.path
+
+        pli_runfiles.extend(pli.deps)
+
+    inputs.extend(pli_runfiles)
+
     # Run VCS
     ctx.actions.run_shell(
         outputs = outputs,
@@ -138,7 +155,7 @@ def _vcs_binary(ctx):
     return [
         DefaultInfo(
             executable = vcs_out,
-            runfiles = ctx.runfiles(files = all_data + [vcs_runfiles]),
+            runfiles = ctx.runfiles(files = all_data + pli_runfiles + [vcs_runfiles]),
         ),
         LogInfo(
             files = [vcs_log],
