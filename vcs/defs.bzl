@@ -274,13 +274,22 @@ def _vcs_run(ctx):
         args += ["-cm", "+".join(ctx.attr.coverage)]
         args += ["-cm_dir", cov_dir_intermediate.path]
 
+    # Build command
+    command = ""
+
+    if ctx.files.run_env:
+        command += "source " + ctx.file.run_env.path + " && "
+        inputs.append(ctx.file.run_env)
+
+    command += ctx.executable.binary.path + " "
+    command += " ".join(args)
+
     # Run
-    ctx.actions.run(
+    ctx.actions.run_shell(
         outputs = outputs + intermediate_outputs,
         inputs = inputs,
-        executable = ctx.executable.binary,
-        arguments = args,
-        mnemonic = "RunVCSBinary",
+        command = command,
+        progress_message = "Running VCS binary: {}".format(ctx.label.name),
         use_default_shell_env = False,
     )
 
@@ -330,6 +339,10 @@ vcs_run = rule(
             doc = "Types of coverage to collect. Allowed values are: " +
                   ", ".join(_ALLOWED_COV_TYPES) + ". " +
                   "These get passed to the -cm flag",
+        ),
+        "run_env": attr.label(
+            doc = "A shell script to source to set up run environment",
+            allow_single_file = [".sh"],
         ),
         "trace_vcd": attr.bool(
             doc = "Enable trace output in VCD format",
