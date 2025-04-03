@@ -14,17 +14,18 @@
 
 """Describe Verilog providers and some helpful functions for manipulating them."""
 
+load("//pli:providers.bzl", "PliInfo")
+
 # WARNING: prefer using 'merge_verilog_info' rather than constructing these directly
 # to ensure the depset ordering is correct.
 VerilogInfo = provider(
     doc = "Contains DAG info per node in a struct.",
     fields = {
         "dag": "A depset of the DAG entries to propagate upwards.",
-        "plis": "a depset of VerilogInterfaceInfo",
     },
 )
 
-def make_dag_entry(srcs, hdrs, data, deps, label):
+def make_dag_entry(srcs, hdrs, data, plis, deps, label):
     """Create a new DAG entry for use in VerilogInfo.
 
     As VerilogInfo should be created via 'merge_verilog_info' (rather than directly),
@@ -39,7 +40,8 @@ def make_dag_entry(srcs, hdrs, data, deps, label):
     Args:
       srcs: A list of File that are 'srcs'.
       hdrs: A list of File that are 'hdrs'.
-      data: A list of File that are `data`.
+      data: A list of File that are 'data'.
+      plis: A list of PliInfo providers.
       deps: A list of Label that are deps of this entry.
       label: A Label to use as the name for this entry.
     Returns:
@@ -49,6 +51,7 @@ def make_dag_entry(srcs, hdrs, data, deps, label):
         srcs = tuple(srcs),
         hdrs = tuple(hdrs),
         data = tuple(data),
+        plis = tuple(plis),
         deps = tuple(deps),
         label = label,
     )
@@ -93,8 +96,9 @@ def _verilog_library_impl(ctx):
     verilog_info = make_verilog_info(
         new_entries = [make_dag_entry(
             srcs = ctx.files.srcs,
-            data = ctx.files.data,
             hdrs = ctx.files.hdrs,
+            data = ctx.files.data,
+            plis = [pli[PliInfo] for pli in ctx.attr.plis],
             deps = ctx.attr.deps,
             label = ctx.label,
         )],
@@ -122,6 +126,12 @@ verilog_library = rule(
         "hdrs": attr.label_list(
             doc = "Verilog or SystemVerilog headers.",
             allow_files = [".vh", ".svh", ".v", ".sv"],
+        ),
+        "plis": attr.label_list(
+            doc = "The list of PLI library dependencies",
+            providers = [
+                PliInfo,
+            ],
         ),
         "srcs": attr.label_list(
             doc = "Verilog or SystemVerilog sources.",
