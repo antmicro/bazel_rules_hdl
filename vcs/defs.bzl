@@ -51,6 +51,16 @@ def fail_on_invalid_coverage_type(cov_types):
         if cov not in _ALLOWED_COV_TYPES:
             fail("Unsupported coverage type '{}', must be one of: {}".format(cov, ", ".join(_ALLOWED_COV_TYPES)))
 
+def _replace_file_path(ctx, file, pattern, replacement = ""):
+    if pattern in file.path:
+        symlink = ctx.actions.declare_file(file.path.replace(pattern, replacement))
+        ctx.actions.symlink(
+            target_file = file,
+            output = symlink,
+        )
+        return symlink
+    return file
+
 def _vcs_binary(ctx):
     transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
 
@@ -78,14 +88,16 @@ def _vcs_binary(ctx):
             break
 
     # Include directories
-    include_dirs = depset([f.dirname for f in (all_srcs + all_hdrs)]).to_list()
+    # Replace the `+` character that isn't supported in the `+incdir+` argument.
+    files_to_include = [_replace_file_path(ctx, f, "+") for f in (all_srcs + all_hdrs)]
+    include_dirs = depset([f.dirname for f in files_to_include]).to_list()
 
     # Declare outputs
     vcs_log = ctx.actions.declare_file("{}.log".format(ctx.label.name))
     vcs_out = ctx.actions.declare_file(ctx.label.name)
     vcs_runfiles = ctx.actions.declare_directory(ctx.label.name + ".daidir")
 
-    inputs = [ctx.file.vcs_env] + all_hdrs + all_srcs
+    inputs = [ctx.file.vcs_env] + all_hdrs + all_srcs + files_to_include
     outputs = [vcs_log, vcs_out, vcs_runfiles]
 
     # Format base command
