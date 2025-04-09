@@ -23,6 +23,6 @@ def verilator():
         name = "verilator",
         build_file = Label("@rules_hdl//dependency_support/verilator:verilator.BUILD.bazel"),
         urls = ["https://github.com/antmicro/verilator/archive/refs/heads/rrozak/stream-to-unpacked.zip"],
-        sha256 = "fcd3de1313c7023f10b4d2b8d1967a91a552cbb22de87f003a5f4d8e72772ecf",
+        sha256 = "90e256b9ec41a42f2069c90f0e2f65e7ff46a7555efd1bf46270eb06bb4f35c5",
         strip_prefix = "verilator-rrozak-stream-to-unpacked",
     )
