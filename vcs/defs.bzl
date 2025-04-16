@@ -144,6 +144,14 @@ def _vcs_binary(ctx):
 
     inputs.extend(pli_runfiles)
 
+    # Add a command to dereference all symlinks in the .daidir
+    # This is requires as VCS creates symlinks to PLI libraries which may target
+    # files in different Bazel workdir that may get deleted.
+    vcs_runfiles_tmp = vcs_runfiles.path + ".tmp"
+    command += " && cp -L -r " + vcs_runfiles.path + " " + vcs_runfiles_tmp
+    command += " && rm -rf " + vcs_runfiles.path
+    command += " && mv " + vcs_runfiles_tmp + " " + vcs_runfiles.path
+
     # Run VCS
     ctx.actions.run_shell(
         outputs = outputs,
