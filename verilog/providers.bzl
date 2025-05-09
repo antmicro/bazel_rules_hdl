@@ -105,7 +105,16 @@ def _verilog_library_impl(ctx):
         old_infos = [dep[VerilogInfo] for dep in ctx.attr.deps],
     )
 
+    files = []
+    for f in verilog_info.dag.to_list():
+        files.extend(f.srcs)
+        files.extend(f.hdrs)
+        files.extend(f.data)
+
     return [
+        DefaultInfo(
+            files = depset(files),
+        ),
         verilog_info,
     ]
 
