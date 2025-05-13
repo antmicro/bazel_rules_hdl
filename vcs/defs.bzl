@@ -134,12 +134,22 @@ def _vcs_binary(ctx):
 
     # Include dirs
     # There must be a separate +incdir+<path> for each directory
+    flist = ""
     for include_dir in include_dirs:
-        command += " +incdir+" + include_dir
+        flist += "+incdir+" + include_dir + "\n"
 
     # Sources
     for verilog_file in all_srcs:
-        command += " " + verilog_file.path
+        flist += verilog_file.path + "\n"
+
+    vcs_flist = ctx.actions.declare_file("{}_vcs.f".format(ctx.label.name))
+    ctx.actions.write(
+        output = vcs_flist,
+        content = flist,
+    )
+
+    command += " -f " + vcs_flist.path
+    inputs.append(vcs_flist)
 
     # PLI libraries
     pli_runfiles = []
