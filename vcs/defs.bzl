@@ -25,6 +25,7 @@ CoverageInfo = provider(
     fields = {
         "compiled_types": "Coverage types that the binary was compiled with",
         "cov_dir": "Coverage directory",
+        "exclusions_file": "File passed with `-cm_hier` during compilation",
     },
 )
 
@@ -60,6 +61,38 @@ def _replace_file_path(ctx, file, pattern, replacement = ""):
         )
         return symlink
     return file
+
+def _parse_coverage_exclusions(ctx, headers, sources):
+    # For example:
+    # // Bazel 'vcs_binary' rule's 'coverage_exclusions':
+    # // * path_substrings: ["/cdk/", "/dv/", "/validation/", "hw/ip/cortex_m7_core/", "hw/vendor/"]
+    top_comment = ["// Bazel 'vcs_binary' rule's 'coverage_exclusions':"]
+
+    exclusion_lines = []
+    exclusions = ctx.attr.coverage_exclusions
+    for key in exclusions:
+        top_comment.append("// * {}: {}".format(key, exclusions[key]))
+
+        if key == "path_substrings":
+            included_files = headers + sources
+            for substring in exclusions[key]:
+                comment_added = False
+
+                # We're not iterating over included_files directly cause that list gets modified.
+                for excluded_file in [f for f in included_files if substring in f.path]:
+                    if not comment_added:
+                        exclusion_lines.append("// Path contains '{}':".format(substring))
+                        comment_added = True
+                    exclusion_lines.append("-file {}".format(excluded_file.path))
+                    included_files.remove(excluded_file)
+        else:
+            fail('Invalid key in "coverage_exclusions" dictionary: {}'.format(key))
+
+    # Return lines with top_comment if any exclusions were applied (separated with an empty line).
+    if exclusion_lines:
+        return top_comment + [""] + exclusion_lines
+    else:
+        return None
 
 def _vcs_binary(ctx):
     transitive_srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
@@ -129,8 +162,20 @@ def _vcs_binary(ctx):
     vcs_cov_dir = ctx.actions.declare_directory("{}.vdb".format(ctx.label.name))
     outputs.append(vcs_cov_dir)
 
+    exclusions_file = None
     if produce_coverage:
         command += " -cm " + "+".join(ctx.attr.coverage)
+
+        # Create a file with exclusions based on `coverage_exclusions` and pass it with `-cm_hier`.
+        exclusion_lines = _parse_coverage_exclusions(ctx, all_hdrs, all_srcs)
+        if exclusion_lines:
+            exclusions_file = ctx.actions.declare_file(ctx.label.name + "_coverage_exclusions.cfg")
+            ctx.actions.write(
+                output = exclusions_file,
+                content = "\n".join(exclusion_lines),
+            )
+            inputs.append(exclusions_file)
+            command += " -cm_hier {}".format(exclusions_file.path)
 
     # Include dirs
     # There must be a separate +incdir+<path> for each directory
@@ -193,6 +238,7 @@ def _vcs_binary(ctx):
         CoverageInfo(
             compiled_types = ctx.attr.coverage,
             cov_dir = vcs_cov_dir,
+            exclusions_file = exclusions_file,
         ),
     ]
 
@@ -203,6 +249,12 @@ vcs_binary = rule(
             doc = "Types of coverage to collect. Allowed values are: " +
                   ", ".join(_ALLOWED_COV_TYPES) + ". " +
                   "These get passed to the -cm flag",
+        ),
+        "coverage_exclusions": attr.string_list_dict(
+            doc = "Dictionary with string lists controlling coverage exclusions. " +
+                  "Allowed keys:\n" +
+                  "* \"path_substrings\": all files with paths containing any of " +
+                  "these substrings will be excluded from coverage monitoring",
         ),
         "module": attr.label(
             doc = "The top level build.",
@@ -285,6 +337,7 @@ def _vcs_run(ctx):
     fail_on_invalid_coverage_type(ctx.attr.coverage)
     cov_info = ctx.attr.binary[CoverageInfo]
     cov_dir = cov_info.cov_dir
+    exclusions_file = cov_info.exclusions_file
 
     if not is_subset(cov_info.compiled_types, ctx.attr.coverage):
         fail("Design was compiled with VCS with incompatible set of coverage types: " +
@@ -328,11 +381,12 @@ def _vcs_run(ctx):
         # that contains all subdirs: 'auxiliary', 'design', 'shape' and 'testdata'
         cov_dir_final = ctx.actions.declare_directory("{}.vdb".format(ctx.label.name))
         ctx.actions.run_shell(
-            inputs = [cov_dir, cov_dir_intermediate],
+            inputs = [cov_dir, cov_dir_intermediate] + ([exclusions_file] if exclusions_file else []),
             outputs = [cov_dir_final],
-            command = "cp -r {}/* {}/* {}".format(
+            command = "cp -r {}/* {}/* {} {}".format(
                 cov_dir.path,
                 cov_dir_intermediate.path,
+                exclusions_file.path if exclusions_file else "",
                 cov_dir_final.path,
             ),
         )
