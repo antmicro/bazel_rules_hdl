@@ -40,6 +40,8 @@ test_verilog:
 # Runs //vcs/tests:* rules
 test_vcs:
   extends: .vcs_templ
+  variables:
+    COVERAGE_EXCLUSIONS_TEST_RULE: tb_vcs_run_fullcov_with_exclusions
 
 # Runs //dc/tests:* rules
 test_dc:
