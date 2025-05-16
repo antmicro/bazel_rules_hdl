@@ -65,6 +65,38 @@ vcs_binary(
 )
 
 vcs_binary(
+    name = "tb_vcs_fullcov_with_exclusions",
+    coverage = [
+        "line",
+        "cond",
+        "fsm",
+        "tgl",
+        "branch",
+    ],
+    coverage_exclusions = {
+        "path_substrings": [
+            "adder.sv",
+        ],
+    },
+    module = ":tb",
+    module_top = "tb",
+    opts = [
+        "-full64",
+        "+vcs+lic+wait",
+        "+error+500",
+        "+lint=all",
+        "-error=all",
+    ],
+    opts_with_label = {
+        "-msg_config=": "//vcs/tests:config.txt",
+    },
+    vcs_env = "//vcs/tests:vcs_env.sh",
+    visibility = [
+        "//visibility:public",
+    ],
+)
+
+vcs_binary(
     name = "tb_vcs_nocov",
     module = ":tb",
     module_top = "tb",
@@ -92,6 +124,22 @@ vcs_run(
     ],
     trace_vcd = True,
     trace_vpd = True,
+    visibility = [
+        "//visibility:public",
+    ],
+)
+
+# coverage_exclusions are only needed in vcs_binary
+vcs_run(
+    name = "tb_vcs_run_fullcov_with_exclusions",
+    binary = ":tb_vcs_fullcov_with_exclusions",
+    coverage = [
+        "line",
+        "cond",
+        "fsm",
+        "tgl",
+        "branch",
+    ],
     visibility = [
         "//visibility:public",
     ],
@@ -131,6 +179,7 @@ filegroup(
     name = "tb_vcs_run",
     srcs = [
         ":tb_vcs_run_fullcov",
+        ":tb_vcs_run_fullcov_with_exclusions",
         ":tb_vcs_run_missing_run_cov",
         ":tb_vcs_run_nocov",
         ":tb_vcs_waveform_conversion",
