@@ -27,7 +27,9 @@ verilog_library(
 
 verilog_filelist(
     name = "top_filelist",
-    lib = ":top",
+    deps = [
+        ":top",
+    ],
 )
 
 genrule(
