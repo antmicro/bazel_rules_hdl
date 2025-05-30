@@ -1,33 +1,57 @@
 """Verilog filelist generation rules"""
 
+load("@rules_pkg//:providers.bzl", "PackageFilesInfo")
 load(":providers.bzl", "VerilogInfo")
 
-def _verilog_filelist_impl(ctx):
-    """Collects all direct and transitive sources/headers of a verilog library"""
-
-    # Sources
-    srcs = depset([], transitive = [ctx.attr.lib[VerilogInfo].dag]).to_list()
+def _flatten_verilog_info(providers):
+    infos = depset([], transitive = [p.dag for p in providers]).to_list()
 
     # Flatten
-    all_srcs = [info.srcs for info in srcs]
-    all_hdrs = [info.hdrs for info in srcs]
+    srcs = [info.srcs for info in infos]
+    hdrs = [info.hdrs for info in infos]
 
-    all_srcs = [f for sub_tuple in all_srcs for f in sub_tuple]
-    all_hdrs = [f for sub_tuple in all_hdrs for f in sub_tuple]
+    srcs = [f for sub_tuple in srcs for f in sub_tuple]
+    hdrs = [f for sub_tuple in hdrs for f in sub_tuple]
 
-    # Include directories
-    include_dirs = depset([f.dirname for f in all_hdrs]).to_list()
+    return (srcs, hdrs)
+
+def _verilog_filelist_impl(ctx):
+    (srcs, hdrs) = _flatten_verilog_info([d[VerilogInfo] for d in ctx.attr.deps])
+
+    # Create inverted map
+    src_dest_map = {}
+    if ctx.attr.pkg_files:
+        src_dest_map = {src: dest for (dest, src) in ctx.attr.pkg_files[PackageFilesInfo].dest_src_map.items()}
+
+    # Map hdrs
+    include_dirs = []
+    for h in hdrs:
+        if h in src_dest_map:
+            # It's safe to rely on a path sepparator, because rules_pkg uses /
+            include_dirs.append(src_dest_map[h].rsplit("/", 1)[0])
+        else:
+            include_dirs.append(h.dirname)
+    include_dirs = depset(include_dirs).to_list()
+
+    # Map srcs
+    src_paths = []
+    for s in srcs:
+        if s in src_dest_map:
+            src_paths.append(src_dest_map[s])
+        else:
+            src_paths.append(s.path)
 
     # Write the .f file
     content = []
-
     for name in include_dirs:
         content.append(ctx.attr.include_prefix + name)
+    content.extend(src_paths)
 
-    for name in all_srcs:
-        content.append(name.path)
+    filelist = ctx.attr.filelist
+    if not filelist:
+        filelist = ctx.label.name + ".f"
 
-    file = ctx.actions.declare_file(ctx.label.name + ".f")
+    file = ctx.actions.declare_file(filelist)
     ctx.actions.write(file, "\n".join(content) + "\n")
 
     return DefaultInfo(
@@ -38,14 +62,21 @@ verilog_filelist = rule(
     doc = "Generate a .f file from a Verilog library.",
     implementation = _verilog_filelist_impl,
     attrs = {
+        "deps": attr.label_list(
+            doc = "The Verilog libraries to use",
+            providers = [VerilogInfo],
+            mandatory = True,
+        ),
+        "filelist": attr.string(
+            doc = "Name of the file containing filelist, by default it's label.name+\".f\"",
+        ),
         "include_prefix": attr.string(
             doc = "Prefix for include directories",
             default = "+incdir+",
         ),
-        "lib": attr.label(
-            doc = "The Verilog library to use",
-            providers = [VerilogInfo],
-            mandatory = True,
+        "pkg_files": attr.label(
+            doc = "Target collecting files to provide proper mapping",
+            providers = [PackageFilesInfo],
         ),
     },
     provides = [
