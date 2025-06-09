@@ -79,7 +79,7 @@ yosys delete {*/t:$print}
 # pass.
 yosys opt_clean -purge
 
-yosys synth -top $top -noshare
+yosys synth -top $top -noshare -noabc
 
 # Remove internal only aliases for public nets and then give created instances
 # useful names. At this stage it is all the other synthesizable constructs.
