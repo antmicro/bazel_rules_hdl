@@ -139,7 +139,7 @@ vc_static_lint = rule(
     implementation = _vc_static_lint,
     attrs = {
         "cdc_script": attr.label(
-            doc = "A TCL script run by VC Static to check RDC compliance",
+            doc = "A TCL script run by VC Static to check CDC compliance",
             default = "//vc_static:cdc.tcl",
             allow_single_file = True,
         ),
