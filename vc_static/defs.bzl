@@ -70,6 +70,7 @@ def _vc_static_lint(ctx):
     tcl_variables = {
         "all_severities": ctx.attr.severities,
         "config_files": [f.path for f in ctx.files.config_files],
+        "pre_check_config_files": [f.path for f in ctx.files.pre_check_config_files],
         "enable_liberty": ctx.attr.enable_liberty,
         "failing_severities": ctx.attr.failing_severities,
         "goal_name": ctx.attr.goal_name,
@@ -83,6 +84,7 @@ def _vc_static_lint(ctx):
     inputs = [ctx.file.vc_static_env, tcl_script] + \
              ctx.files.waiver_files + \
              ctx.files.config_files + \
+             ctx.files.pre_check_config_files + \
              all_hdrs + \
              all_srcs
 
@@ -108,7 +110,6 @@ def _vc_static_lint(ctx):
         ctx.file.vc_static_env.path,
         "&&",
         "vc_static_shell",
-        "-no_ui",
         "-no_restore",
         "-batch",
         "-output_log_file",
@@ -144,6 +145,10 @@ vc_static_lint = rule(
         ),
         "config_files": attr.label_list(
             doc = "Config files",
+            allow_files = True,
+        ),
+        "pre_check_config_files": attr.label_list(
+            doc = "Config files applied after elaborate command and before check",
             allow_files = True,
         ),
         "enable_liberty": attr.bool(
