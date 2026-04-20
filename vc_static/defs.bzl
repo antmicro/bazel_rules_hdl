@@ -70,11 +70,11 @@ def _vc_static_lint(ctx):
     tcl_variables = {
         "all_severities": ctx.attr.severities,
         "config_files": [f.path for f in ctx.files.config_files],
-        "pre_check_config_files": [f.path for f in ctx.files.pre_check_config_files],
         "enable_liberty": ctx.attr.enable_liberty,
         "failing_severities": ctx.attr.failing_severities,
         "goal_name": ctx.attr.goal_name,
         "include_dirs": depset([f.dirname for f in (all_srcs + all_hdrs)]).to_list(),
+        "pre_check_config_files": [f.path for f in ctx.files.pre_check_config_files],
         "report_file": report_file.path,
         "sources": [f.path for f in all_srcs],
         "top_module": ctx.attr.module_top,
@@ -147,10 +147,6 @@ vc_static_lint = rule(
             doc = "Config files",
             allow_files = True,
         ),
-        "pre_check_config_files": attr.label_list(
-            doc = "Config files applied after elaborate command and before check",
-            allow_files = True,
-        ),
         "enable_liberty": attr.bool(
             doc = "Enable liberty database load",
             default = False,
@@ -180,6 +176,10 @@ vc_static_lint = rule(
                 "-lic_wait",
                 "1140",
             ],
+        ),
+        "pre_check_config_files": attr.label_list(
+            doc = "Config files applied after elaborate command and before check",
+            allow_files = True,
         ),
         "rdc_script": attr.label(
             doc = "A TCL script run by VC Static to check RDC compliance",
