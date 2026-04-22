@@ -111,7 +111,6 @@ def _vc_static_lint(ctx):
         "&&",
         "vc_static_shell",
         "-no_restore",
-        "-batch",
         "-output_log_file",
         log_file.path,
         "-file",
@@ -171,6 +170,7 @@ vc_static_lint = rule(
         "opts": attr.string_list(
             doc = "Additional command line options to pass to vc_static",
             default = [
+                "-batch",
                 "-no_init",
                 "-mode64",
                 "-lic_wait",
