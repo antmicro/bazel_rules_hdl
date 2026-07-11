@@ -18,13 +18,13 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("@rules_hdl//dependency_support/com_github_westes_flex:flex.bzl", "genlex")
 load(
     "@rules_hdl//dependency_support/verilator/private:verilator_utils.bzl",
+    "current_flex_lexer_header",
     "verilator_astgen",
     "verilator_bisonpre",
     "verilator_build_template",
     "verilator_flexfix",
     "verilator_root",
     "verilator_version",
-    "current_flex_lexer_header"
 )
 
 package(default_visibility = ["//visibility:private"])
@@ -90,6 +90,7 @@ verilator_astgen(
         "src/V3AstNodeDType.h",
         "src/V3AstNodeExpr.h",
         "src/V3AstNodeOther.h",
+        "src/V3AstNodeStmt.h",
         "src/V3DfgVertices.h",
         "src/Verilator.cpp",
     ],
@@ -106,6 +107,7 @@ verilator_astgen(
         "V3Ast__gen_yystype.h",
         "V3Dfg__gen_ast_to_dfg.h",
         "V3Dfg__gen_auto_classes.h",
+        "V3Dfg__gen_clone_cases.h",
         "V3Dfg__gen_dfg_to_ast.h",
         "V3Dfg__gen_forward_class_decls.h",
         "V3Dfg__gen_macros.h",
@@ -119,6 +121,8 @@ verilator_astgen(
         "V3AstNodeDType.h",
         "--astdef",
         "V3AstNodeExpr.h",
+        "--astdef",
+        "V3AstNodeStmt.h",
         "--astdef",
         "V3AstNodeOther.h",
         "--dfgdef",
@@ -135,6 +139,7 @@ verilator_astgen(
         "src/V3AstNodeDType.h",
         "src/V3AstNodeExpr.h",
         "src/V3AstNodeOther.h",
+        "src/V3AstNodeStmt.h",
         "src/V3Const.cpp",
         "src/V3DfgVertices.h",
         "src/Verilator.cpp",
@@ -149,6 +154,8 @@ verilator_astgen(
         "V3AstNodeExpr.h",
         "--astdef",
         "V3AstNodeOther.h",
+        "--astdef",
+        "V3AstNodeStmt.h",
         "--dfgdef",
         "V3DfgVertices.h",
         "V3Const.cpp",
@@ -186,21 +193,24 @@ verilator_flexfix(
 
 verilator_bisonpre(
     name = "verilator_bison",
-    yacc_src = "src/verilog.y",
-    out_src = "V3ParseBison.c",
-    out_hdr = "V3ParseBison.h",
     bisonpre = "src/bisonpre",
+    out_hdr = "V3ParseBison.h",
+    out_src = "V3ParseBison.c",
+    yacc_src = "src/verilog.y",
 )
 
 cc_library(
     name = "verilatedos",
-    hdrs = ["include/verilatedos.h", "include/verilatedos_c.h"],
+    hdrs = [
+        "include/verilatedos.h",
+        "include/verilatedos_c.h",
+    ],
     strip_include_prefix = "include/",
 )
 
 current_flex_lexer_header(
     name = "current_flex_lexer_header",
-    out = "flex/src/FlexLexer.h"
+    out = "flex/src/FlexLexer.h",
 )
 
 cc_library(
@@ -231,6 +241,7 @@ cc_library(
         ":V3Const__gen.cpp",
         ":V3Dfg__gen_ast_to_dfg.h",
         ":V3Dfg__gen_auto_classes.h",
+        ":V3Dfg__gen_clone_cases.h",
         ":V3Dfg__gen_dfg_to_ast.h",
         ":V3Dfg__gen_forward_class_decls.h",
         ":V3Dfg__gen_macros.h",
@@ -262,16 +273,33 @@ cc_library(
         ":V3ParseBison.c",
     ],
     deps = [
-        ":verilatedos",
         ":FlexLexer",
+        ":verilatedos",
+    ],
+)
+
+cc_library(
+    name = "fstcpp",
+    hdrs = [
+        "include/fstcpp/fstcpp.h",
+        "include/fstcpp/fstcpp_assertion.h",
+        "include/fstcpp/fstcpp_file.h",
+        "include/fstcpp/fstcpp_stream_write_helper.h",
+        "include/fstcpp/fstcpp_variable_info.h",
+        "include/fstcpp/fstcpp_writer.h",
+    ],
+    strip_include_prefix = "include/",
+    textual_hdrs = [
+        "include/fstcpp/fstcpp_variable_info.cpp",
+        "include/fstcpp/fstcpp_writer.cpp",
     ],
 )
 
 cc_library(
     name = "vltstd",
     hdrs = [
-        "include/vltstd/svdpi.h",
         "include/vltstd/sv_vpi_user.h",
+        "include/vltstd/svdpi.h",
         "include/vltstd/vpi_user.h",
     ],
     strip_include_prefix = "include/vltstd",
@@ -280,17 +308,13 @@ cc_library(
 cc_library(
     name = "verilator",
     srcs = [
-        "include/gtkwave/fastlz.h",
-        "include/gtkwave/fst_config.h",
-        "include/gtkwave/fstapi.h",
-        "include/gtkwave/lz4.h",
+        "include/verilated.cpp",
         "include/verilated_fst_c.cpp",
         "include/verilated_imp.h",
         "include/verilated_syms.h",
         "include/verilated_threads.cpp",
         "include/verilated_vcd_c.cpp",
         "include/verilated_vpi.cpp",
-        "include/verilated.cpp",
     ],
     hdrs = [
         "include/verilated_config.h",
@@ -315,23 +339,21 @@ cc_library(
     # TODO: Remove these once upstream fixes these warnings
     copts = [
         "-Wno-unused-const-variable",
+        "-Wno-sign-compare",
         "-std=c++17",
         "-ffp-contract=off",
     ],
     includes = ["include"],
     linkopts = [
         "-lpthread",
+        "-llz4",
     ],
     strip_include_prefix = "include/",
-    textual_hdrs = [
-        "include/gtkwave/fastlz.c",
-        "include/gtkwave/fstapi.c",
-        "include/gtkwave/lz4.c",
-    ],
     visibility = ["//visibility:public"],
     deps = [
-        "@net_zlib//:zlib",
+        ":fstcpp",
         ":vltstd",
+        "@net_zlib//:zlib",
     ],
 )
 
@@ -376,6 +398,9 @@ filegroup(
 
 verilator_root(
     name = "verilator_root",
-    include = ["include/verilated_std.sv", "include/verilated_std_waiver.vlt"],
+    include = [
+        "include/verilated_std.sv",
+        "include/verilated_std_waiver.vlt",
+    ],
     visibility = ["//visibility:public"],
 )
