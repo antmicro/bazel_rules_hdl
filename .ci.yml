@@ -1,1 +1,1 @@
-include: bazel_rules_hdl-ci@main:bazel_rules_hdl.yml
+include: bazel_rules_hdl-ci@bump-verilator-v5.050:bazel_rules_hdl.yml
