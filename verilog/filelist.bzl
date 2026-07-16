@@ -1,6 +1,6 @@
 """Verilog filelist generation rules"""
 
-load("@rules_pkg//:providers.bzl", "PackageFilesInfo")
+load("@rules_pkg//pkg:providers.bzl", "PackageFilesInfo")
 load(":providers.bzl", "VerilogInfo")
 
 def _flatten_verilog_info(providers):
