@@ -15,7 +15,8 @@
 
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("@rules_hdl//dependency_support/com_github_westes_flex:flex.bzl", "genlex")
+load("@rules_flex//flex:flex.bzl", "flex")
+load("@rules_hdl//dependency_support:copy.bzl", "copy")
 load(
     "@rules_hdl//dependency_support/verilator/private:verilator_utils.bzl",
     "current_flex_lexer_header",
@@ -163,9 +164,20 @@ verilator_astgen(
     astgen = "src/astgen",
 )
 
-genlex(
-    name = "verilator_lex_pregen",
+flex(
+    name = "verilator_lex_pregen_internal",
     src = "src/verilog.l",
+)
+
+filegroup(
+    name = "verilator_lex_pregen_src",
+    srcs = [":verilator_lex_pregen_internal"],
+    output_group = "cc_srcs",
+)
+
+copy(
+    name = "verilator_lex_pregen",
+    src = ":verilator_lex_pregen_src",
     out = "V3Lexer_pregen.yy.cpp",
 )
 
@@ -177,9 +189,20 @@ verilator_flexfix(
     flexfix = "src/flexfix",
 )
 
-genlex(
-    name = "verilator_prelex_pregen",
+flex(
+    name = "verilator_prelex_pregen_internal",
     src = "src/V3PreLex.l",
+)
+
+filegroup(
+    name = "verilator_prelex_pregen_src",
+    srcs = [":verilator_prelex_pregen_internal"],
+    output_group = "cc_srcs",
+)
+
+copy(
+    name = "verilator_prelex_pregen",
+    src = ":verilator_prelex_pregen_src",
     out = "V3PreLex_pregen.yy.cpp",
 )
 
