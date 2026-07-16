@@ -1,6 +1,46 @@
 """Utility rules used to compile Verilator"""
 
-load("//dependency_support/org_gnu_bison:bison.bzl", "correct_bison_env_for_action")
+def _correct_bison_env_for_action(env, bison):
+    """Modify the Bison environment variables to work in an action that doesn't a have built bison runfiles directory.
+
+    The `bison_toolchain.bison_env` parameter assumes that Bison will provided via an executable attribute
+    and thus have built runfiles available to it. This is not the case for this action and any other actions
+    trying to use bison as a tool via the toolchain. This function transforms existing environment variables
+    to support running Bison as desired.
+
+    Args:
+        env (dict): The existing bison environment variables
+        bison (File): The Bison executable
+
+    Returns:
+        Dict: Environment variables required for running Bison.
+    """
+    bison_env = dict(env)
+
+    # Force Bison's bundled Bazel runfiles resolution to fail so it falls back
+    # to BISON_PKGDATADIR/M4 below (it otherwise prioritizes runfiles-resolved
+    # paths, which don't work here since data/ and the m4 binary live under
+    # different roots).
+    bison_env["RUNFILES_DIR"] = "/nonexistent-runfiles-dir-force-bison-env-fallback"
+    bison_env.pop("RUNFILES_MANIFEST_FILE", None)
+    bison_env.pop("RUNFILES_MANIFEST_ONLY", None)
+
+    # Convert the environment variables to non-runfiles forms
+    bison_runfiles_dir = "{}.runfiles/{}".format(
+        bison.path,
+        bison.owner.workspace_name,
+    )
+
+    bison_env["BISON_PKGDATADIR"] = bison_env["BISON_PKGDATADIR"].replace(
+        bison_runfiles_dir,
+        "external/{}".format(bison.owner.workspace_name),
+    )
+    bison_env["M4"] = bison_env["M4"].replace(
+        bison_runfiles_dir,
+        "{}/external/{}".format(bison.root.path, bison.owner.workspace_name),
+    )
+
+    return bison_env
 
 def _verilator_astgen_impl(ctx):
     args = ctx.actions.args()
@@ -70,7 +110,7 @@ def _verilator_bisonpre_impl(ctx):
 
     tools = depset([ctx.file.bisonpre], transitive = [bison_toolchain.all_files])
 
-    bison_env = correct_bison_env_for_action(
+    bison_env = _correct_bison_env_for_action(
         env = bison_toolchain.bison_env,
         bison = bison_toolchain.bison_tool.executable,
     )
