@@ -453,17 +453,17 @@ verilator_cc_binary = rule(
             doc = "CC compiler.",
             default = Label("@bazel_tools//tools/cpp:current_cc_toolchain"),
         ),
-        "_process_wrapper": attr.label(
-            doc = "The Verilator process wrapper binary.",
-            executable = True,
-            cfg = "exec",
-            default = Label("//verilator/private:verilator_process_wrapper"),
-        ),
         "_copy_tree": attr.label(
             doc = "A tool for copying a tree of files",
             cfg = "exec",
             executable = True,
             default = Label("//common:copy_tree"),
+        ),
+        "_process_wrapper": attr.label(
+            doc = "The Verilator process wrapper binary.",
+            executable = True,
+            cfg = "exec",
+            default = Label("//verilator/private:verilator_process_wrapper"),
         ),
     },
     provides = [
