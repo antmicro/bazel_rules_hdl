@@ -453,6 +453,12 @@ verilator_cc_binary = rule(
             doc = "CC compiler.",
             default = Label("@bazel_tools//tools/cpp:current_cc_toolchain"),
         ),
+        "_process_wrapper": attr.label(
+            doc = "The Verilator process wrapper binary.",
+            executable = True,
+            cfg = "exec",
+            default = Label("//verilator/private:verilator_process_wrapper"),
+        ),
         "_copy_tree": attr.label(
             doc = "A tool for copying a tree of files",
             cfg = "exec",
@@ -596,7 +602,7 @@ def _verilator_lint(ctx):
         tools = [verilator_toolchain.all_files, ctx.executable._run_wrapper],
         env = _verilator_toolchain_env(verilator_toolchain),
         executable = ctx.executable._run_wrapper,
-        arguments = [verilator_toolchain.verilator.path, args],
+        arguments = [args],
         mnemonic = "VerilatorLint",
         progress_message = "[Verilator] Linting {}".format(ctx.label),
     )
