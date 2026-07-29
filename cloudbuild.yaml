@@ -41,7 +41,7 @@ steps:
   - |
     set -e
     apt-get update
-    apt-get install -y libtinfo5 clang
+    apt-get install -y libtinfo5 clang libc6-dev
     BUILD_INVOCATION_ID=$(python3 tools/generate_uuid.py)
     TEST_INVOCATION_ID=$(python3 tools/generate_uuid.py)
     echo STATUS: Reporting logs with build invocation id $$BUILD_INVOCATION_ID and test invocation id $$TEST_INVOCATION_ID to GitHub.
