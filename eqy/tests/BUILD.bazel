@@ -1,0 +1,88 @@
+# Copyright 2026 Antmicro
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//eqy:defs.bzl", "eqy_check")
+load("//verilog:defs.bzl", "verilog_filelist", "verilog_library")
+
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = ["//visibility:private"],
+)
+
+verilog_library(
+    name = "counter",
+    srcs = ["counter.sv"],
+)
+
+verilog_library(
+    name = "counter_gold",
+    srcs = ["counter_wrapper0.sv"],
+    deps = [":counter"],
+)
+
+verilog_filelist(
+    name = "counter_gold_flist",
+    include_prefix = "-I",
+    deps = [":counter_gold"],
+)
+
+verilog_library(
+    name = "counter_gate",
+    srcs = ["counter_wrapper1.sv"],
+    deps = [":counter"],
+)
+
+verilog_filelist(
+    name = "counter_gate_flist",
+    include_prefix = "-I",
+    deps = [":counter_gate"],
+)
+
+eqy_check(
+    name = "counter_eqy",
+    gate = ":counter_gate_flist",
+    gold = ":counter_gold_flist",
+    module_top = "counter_wrapper",
+)
+
+# Gate level
+verilog_library(
+    name = "counter_synth_gold",
+    srcs = ["counter_wrapper0_synth.v"],
+)
+
+verilog_filelist(
+    name = "counter_synth_gold_flist",
+    include_prefix = "-I",
+    deps = [":counter_synth_gold"],
+)
+
+verilog_library(
+    name = "counter_synth_gate",
+    srcs = ["counter_wrapper1_synth.v"],
+)
+
+verilog_filelist(
+    name = "counter_synth_gate_flist",
+    include_prefix = "-I",
+    deps = [":counter_synth_gate"],
+)
+
+eqy_check(
+    name = "counter_synth_eqy",
+    gate = ":counter_synth_gate_flist",
+    gold = ":counter_synth_gold_flist",
+    module_top = "counter_wrapper",
+    strategy = "sby",
+)

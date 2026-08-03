@@ -177,6 +177,10 @@ charset-normalizer==3.2.0 \
     --hash=sha256:f779d3ad205f108d14e99bb3859aa7dd8e9c68874617c72354d7ecaec2a054ac \
     --hash=sha256:f87f746ee241d30d6ed93969de31e5ffd09a2961a051e60ae6bddde9ec3583aa
     # via requests
+click==8.4.2 \
+    --hash=sha256:9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6 \
+    --hash=sha256:e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76
+    # via -r dependency_support/pip_requirements.in
 cocotb==2.1.0 \
     --hash=sha256:069364019aacd0e3a299185bf5145aacb599b0576a0b0f2d2c96d9f8bf73b842 \
     --hash=sha256:078281d1e6dba034c339c03b6f4989871f46b370c84cbc2768cc6a304163e5e3 \
