@@ -895,7 +895,7 @@
     },
     "//dependency_support:tools_extension.bzl%tools_extension": {
       "general": {
-        "bzlTransitiveDigest": "fq+fsm39cu+cxOX4I30ZnhY2cFGM211DDZdNsMK/dAk=",
+        "bzlTransitiveDigest": "h/4tbN8+IhQ01ZarUSaLcqyByODMfm+gAHmDN3s2FJE=",
         "usagesDigest": "sRhWEu0Z8WRXHP02toR5P+SDFjI9i4gx2v6lJNNrxnE=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
@@ -905,10 +905,10 @@
             "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
             "attributes": {
               "urls": [
-                "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-08-10/oss-cad-suite-linux-x64-20260810.tgz"
+                "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-09-30/oss-cad-suite-linux-x64-20260930.tgz"
               ],
               "type": "tar.gz",
-              "sha256": "4d1137c56eaa7f2fadce7dd7f79b614cc5f7862684bcbe79765bb9a1f9037db0",
+              "sha256": "9e50078dd84062bb78b19cc27a2185b9d37f8cd3d80c03242ec6d85044895fc1",
               "strip_prefix": "oss-cad-suite",
               "build_file": "@@//dependency_support/at_clifford_yosys:bundled.BUILD.bazel"
             }
