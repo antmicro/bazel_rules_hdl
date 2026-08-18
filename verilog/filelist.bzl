@@ -1,7 +1,7 @@
 """Verilog filelist generation rules"""
 
 load("@rules_pkg//pkg:providers.bzl", "PackageFilesInfo")
-load(":providers.bzl", "VerilogInfo")
+load(":providers.bzl", "VerilogInfo", "make_verilog_info")
 
 def _flatten_verilog_info(providers):
     infos = depset([], transitive = [p.dag for p in providers]).to_list()
@@ -54,9 +54,12 @@ def _verilog_filelist_impl(ctx):
     file = ctx.actions.declare_file(filelist)
     ctx.actions.write(file, "\n".join(content) + "\n")
 
-    return DefaultInfo(
-        files = depset([file]),
-    )
+    return [
+        DefaultInfo(
+            files = depset([file]),
+        ),
+        make_verilog_info(old_infos = [d[VerilogInfo] for d in ctx.attr.deps]),
+    ]
 
 verilog_filelist = rule(
     doc = "Generate a .f file from a Verilog library.",
@@ -81,5 +84,6 @@ verilog_filelist = rule(
     },
     provides = [
         DefaultInfo,
+        VerilogInfo,
     ],
 )
