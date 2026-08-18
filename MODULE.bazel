@@ -111,6 +111,7 @@ use_repo(pdks, "com_google_skywater_pdk_sky130_fd_sc_ms")
 # Load tools
 tools = use_extension("//dependency_support:tools_extension.bzl", "tools_extension")
 use_repo(tools, "at_clifford_yosys")
+use_repo(tools, "at_clifford_yosys_data")
 use_repo(tools, "com_icarus_iverilog")
 use_repo(tools, "verilator")
 use_repo(tools, "net_lz4")
