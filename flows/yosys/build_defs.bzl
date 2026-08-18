@@ -28,18 +28,26 @@ def _yosys_synth_file_step_impl(ctx):
     liberty = standard_cells.default_corner.liberty
     synth_tcl = ctx.file.synth_tcl
 
+    yosys_share_root = ""
+    tcl_library_dir = ""
+    for f in ctx.attr._yosys[DefaultInfo].default_runfiles.files.to_list():
+        if not yosys_share_root and f.path.endswith("techmap.v"):
+            yosys_share_root = f.dirname + "/"
+        if not tcl_library_dir and f.path.endswith("library/init.tcl"):
+            tcl_library_dir = f.dirname
+
     commands = [
         script_prefix,
         "# Use rlocation to find all necessary tools and files",
-        'YOSYS=$(rlocation "at_clifford_yosys/yosys")',
+        'YOSYS=$(rlocation "%s")' % get_rlocation_path(ctx, ctx.executable._yosys),
+        'export YOSYS_DATDIR=$(dirname "$YOSYS")/',
+        'export TCL_LIBRARY="%s"' % tcl_library_dir,
         'ABC_BIN=$(rlocation "abc/abc_bin")',
         'LIBERTY_FILE=$(rlocation "%s")' % get_rlocation_path(ctx, liberty),
-        'TCL_INIT=$(rlocation "tcl_lang/library/init.tcl")',
         'SYNTH_TCL=$(rlocation "%s")' % get_rlocation_path(ctx, synth_tcl),
-        'export YOSYS_DATDIR=$(dirname "$YOSYS")/',
         'export ABC="$ABC_BIN"',
         'export LIBERTY="$LIBERTY_FILE"',
-        'export TCL_LIBRARY=$(dirname "$TCL_INIT")',
+        'export PATH="$YOSYS_DATDIR:$PATH"',
         "# Exec yosys using its resolved path",
         'exec "$YOSYS" -q -q -Q -T -c "$SYNTH_TCL" "$@"',
     ]

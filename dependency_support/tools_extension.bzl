@@ -3,21 +3,49 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
+def _at_clifford_yosys_aliases_impl(repository_ctx):
+    repository_ctx.file("BUILD.bazel", repository_ctx.attr.build_file_content)
+
+_at_clifford_yosys_aliases = repository_rule(
+    implementation = _at_clifford_yosys_aliases_impl,
+    attrs = {
+        "build_file_content": attr.string(mandatory = True),
+    },
+    doc = "Aliases for rules_hdl's dependency_support/at_clifford_yosys package.",
+)
+
 def _tools_extension_impl(module_ctx):
-    # Yosys
+    # Yosys / OSS CAD Suite
     maybe(
         http_archive,
-        name = "at_clifford_yosys",
+        name = "at_clifford_yosys_data",
         urls = [
-            "https://github.com/YosysHQ/yosys/archive/8f07a0d8404f63349d8d3111217b73c9eafbd667.zip",
+            "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-08-10/oss-cad-suite-linux-x64-20260810.tgz",
         ],
-        sha256 = "46a9a4d969770fa20a2fd12c8e83307a597126609645c9655c370c0c365da344",
-        strip_prefix = "yosys-8f07a0d8404f63349d8d3111217b73c9eafbd667",
+        type = "tar.gz",
+        sha256 = "4d1137c56eaa7f2fadce7dd7f79b614cc5f7862684bcbe79765bb9a1f9037db0",
+        strip_prefix = "oss-cad-suite",
         build_file = "//dependency_support/at_clifford_yosys:bundled.BUILD.bazel",
-        patches = [
-            "//dependency_support/at_clifford_yosys:yosys.patch",
-            "//dependency_support/at_clifford_yosys:autoname.patch",
-        ],
+    )
+
+    # Alias Yosys tools for compatibility with existing rules relying on @at_clifford_yosys/... targets.
+    alias_targets = [
+        "yosys",
+        "yosys_abc",
+        "yosys_config",
+        "yosys_filterlib",
+        "yosys_smtbmc",
+        "yosys_witness",
+        "eqy",
+    ]
+    alias_build_content = 'package(default_visibility = ["//visibility:public"])\n\n'
+    for target in alias_targets:
+        real_label = str(Label("//dependency_support/at_clifford_yosys:" + target))
+        alias_build_content += 'alias(\n    name = "{}",\n    actual = "{}",\n)\n\n'.format(target, real_label)
+
+    _at_clifford_yosys_aliases(
+        name = "at_clifford_yosys",
+        build_file_content = alias_build_content,
     )
 
     # Icarus Verilog
@@ -53,7 +81,7 @@ def _tools_extension_impl(module_ctx):
     )
 
     return module_ctx.extension_metadata(
-        root_module_direct_deps = ["at_clifford_yosys", "com_icarus_iverilog", "verilator", "net_lz4"],
+        root_module_direct_deps = ["at_clifford_yosys", "at_clifford_yosys_data", "com_icarus_iverilog", "verilator", "net_lz4"],
         root_module_direct_dev_deps = [],
     )
 

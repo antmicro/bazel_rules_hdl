@@ -891,25 +891,28 @@
     },
     "//dependency_support:tools_extension.bzl%tools_extension": {
       "general": {
-        "bzlTransitiveDigest": "Si3YKx28cqEcmhwK2XZfePz3cJBD8uhIcaxFVupokHo=",
-        "usagesDigest": "6BownC64Kph+5ijJ8yHFe4t1zQECCtj5nqLlel09vkY=",
+        "bzlTransitiveDigest": "OCRKvSqDbua+HICwHSd5FHT9IxgAm5Q3bX5PJ86ZYcw=",
+        "usagesDigest": "D8UVpQVHhlp0i5GVBL+gBsba3jNGLsioGk9eKcl3ks4=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
         "generatedRepoSpecs": {
-          "at_clifford_yosys": {
+          "at_clifford_yosys_data": {
             "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
             "attributes": {
               "urls": [
-                "https://github.com/YosysHQ/yosys/archive/8f07a0d8404f63349d8d3111217b73c9eafbd667.zip"
+                "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-08-10/oss-cad-suite-linux-x64-20260810.tgz"
               ],
-              "sha256": "46a9a4d969770fa20a2fd12c8e83307a597126609645c9655c370c0c365da344",
-              "strip_prefix": "yosys-8f07a0d8404f63349d8d3111217b73c9eafbd667",
-              "build_file": "@@//dependency_support/at_clifford_yosys:bundled.BUILD.bazel",
-              "patches": [
-                "@@//dependency_support/at_clifford_yosys:yosys.patch",
-                "@@//dependency_support/at_clifford_yosys:autoname.patch"
-              ]
+              "type": "tar.gz",
+              "sha256": "4d1137c56eaa7f2fadce7dd7f79b614cc5f7862684bcbe79765bb9a1f9037db0",
+              "strip_prefix": "oss-cad-suite",
+              "build_file": "@@//dependency_support/at_clifford_yosys:bundled.BUILD.bazel"
+            }
+          },
+          "at_clifford_yosys": {
+            "repoRuleId": "@@//dependency_support:tools_extension.bzl%_at_clifford_yosys_aliases",
+            "attributes": {
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nalias(\n    name = \"yosys\",\n    actual = \"@@//dependency_support/at_clifford_yosys:yosys\",\n)\n\nalias(\n    name = \"yosys_abc\",\n    actual = \"@@//dependency_support/at_clifford_yosys:yosys_abc\",\n)\n\nalias(\n    name = \"yosys_config\",\n    actual = \"@@//dependency_support/at_clifford_yosys:yosys_config\",\n)\n\nalias(\n    name = \"yosys_filterlib\",\n    actual = \"@@//dependency_support/at_clifford_yosys:yosys_filterlib\",\n)\n\nalias(\n    name = \"yosys_smtbmc\",\n    actual = \"@@//dependency_support/at_clifford_yosys:yosys_smtbmc\",\n)\n\nalias(\n    name = \"yosys_witness\",\n    actual = \"@@//dependency_support/at_clifford_yosys:yosys_witness\",\n)\n\nalias(\n    name = \"eqy\",\n    actual = \"@@//dependency_support/at_clifford_yosys:eqy\",\n)\n\n"
             }
           },
           "com_icarus_iverilog": {
@@ -949,6 +952,7 @@
         "moduleExtensionMetadata": {
           "explicitRootModuleDirectDeps": [
             "at_clifford_yosys",
+            "at_clifford_yosys_data",
             "com_icarus_iverilog",
             "verilator",
             "net_lz4"
