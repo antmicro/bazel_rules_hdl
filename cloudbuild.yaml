@@ -34,7 +34,7 @@ steps:
     path: /root/.ssh
 
 # Run the build
-- name: gcr.io/cloud-builders/bazel:8.3.1
+- name: gcr.io/bazel-public/bazel:8.5.0 # Ubuntu 22.04
   entrypoint: 'bash'
   args:
   - '-c'
