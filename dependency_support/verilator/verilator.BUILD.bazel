@@ -36,6 +36,7 @@ exports_files([
     "Artistic",
     "COPYING",
     "COPYING.LESSER",
+    "bin/verilator_coverage",
 ])
 
 verilator_version(
