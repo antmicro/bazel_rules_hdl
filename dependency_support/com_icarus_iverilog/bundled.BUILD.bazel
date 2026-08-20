@@ -165,7 +165,6 @@ bison(
     name = "parse_internal",
     src = "parse.y",
     bison_options = ["-p", "VL"],
-    
 )
 
 filegroup(
@@ -196,7 +195,6 @@ bison(
     name = "syn-rules_internal",
     src = "syn-rules.y",
     bison_options = ["-p", "syn_"],
-    
 )
 
 filegroup(
@@ -379,7 +377,6 @@ genrule(
 bison(
     name = "vvp_parse_internal",
     src = ":vvp_parse_y_fixed",
-    
 )
 
 filegroup(
