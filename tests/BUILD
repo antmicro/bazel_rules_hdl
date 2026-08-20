@@ -18,6 +18,7 @@ load("//dependency_support/org_theopenroadproject_asap7_pdk_r1p7:cells_info.bzl"
 load("//flows:basic_asic.bzl", "basic_asic_flow")
 load("//gds_write:build_defs.bzl", "gds_write")
 load("//place_and_route:build_defs.bzl", "place_and_route")
+load("//sby:defs.bzl", "sby_formal")
 load("//static_timing:build_defs.bzl", "run_opensta")
 load("//synthesis:defs.bzl", "sdc_library", "synthesize_rtl")
 load("//verilog:defs.bzl", "verilog_library")
@@ -206,3 +207,24 @@ EXTRA_ARGS = {
     )
     for test_name in BASIC_TESTS
 ]
+
+verilog_library(
+    name = "verilog_counter_formal",
+    srcs = [
+        "verilog_counter_formal.v",
+    ],
+)
+
+sby_formal(
+    name = "counter-test-formal",
+    fst = True,
+    module_top = "verilog_counter_formal",
+    tasks = [
+        "bc",
+        "cov",
+        "prf",
+    ],
+    deps = [
+        ":verilog_counter_formal",
+    ],
+)

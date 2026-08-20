@@ -90,3 +90,14 @@ oss_cad_sh(
     ],
     script = "@at_clifford_yosys_data//:bin/eqy",
 )
+
+oss_cad_sh(
+    name = "sby",
+    data = [
+        "@at_clifford_yosys_data//:bin",
+        "@at_clifford_yosys_data//:lib",
+        "@at_clifford_yosys_data//:libexec",
+        "@at_clifford_yosys_data//:share_yosys",
+    ],
+    script = "@at_clifford_yosys_data//:bin/sby",
+)

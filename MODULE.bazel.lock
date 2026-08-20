@@ -891,8 +891,8 @@
     },
     "//dependency_support:tools_extension.bzl%tools_extension": {
       "general": {
-        "bzlTransitiveDigest": "Fgnisd1laWv0/5FSQjTpgjN9Yoi237StLxVxWIYQMUU=",
-        "usagesDigest": "vRWxOrHMsSUkVGDuZvXgPaGGdJrmjQLjC4s+8qYpnSI=",
+        "bzlTransitiveDigest": "OCRKvSqDbua+HICwHSd5FHT9IxgAm5Q3bX5PJ86ZYcw=",
+        "usagesDigest": "D8UVpQVHhlp0i5GVBL+gBsba3jNGLsioGk9eKcl3ks4=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},

@@ -18,7 +18,7 @@ module verilog_adder(
   input [7:0] y,
   input carry_in,
   output carry_output_bit,
-  output [7:0] sum,
+  output [7:0] sum
 );
   assign {carry_output_bit, sum} = x + y + carry_in;
 endmodule

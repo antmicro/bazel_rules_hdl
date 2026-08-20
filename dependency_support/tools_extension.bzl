@@ -37,6 +37,7 @@ def _tools_extension_impl(module_ctx):
         "yosys_smtbmc",
         "yosys_witness",
         "eqy",
+        "sby",
     ]
     alias_build_content = 'package(default_visibility = ["//visibility:public"])\n\n'
     for target in alias_targets:

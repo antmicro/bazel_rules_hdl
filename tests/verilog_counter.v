@@ -16,7 +16,7 @@
 module verilog_counter(
   input wire clk,
   input wire reset,
-  output [128:0] out,
+  output [128:0] out
 );
   reg [128:0] counter_tmp;
   always @ (posedge clk or posedge reset) begin
