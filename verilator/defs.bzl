@@ -15,6 +15,7 @@
 
 """Functions for verilator."""
 
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 load("@rules_cc//cc:defs.bzl", "CcInfo")
@@ -510,6 +511,69 @@ verilator_cc_binary = rule(
         "@rules_hdl//verilator:toolchain_type",
     ],
     fragments = ["cpp"],
+)
+
+def _verilator_preprocess_impl(ctx):
+    verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
+
+    # Sources
+    srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
+
+    output = ctx.actions.declare_file(paths.join(ctx.label.name, ctx.attr.out))
+
+    # Options
+    vopts = []
+    vopts.extend(["-E"])
+    vopts.extend(["-P"])
+
+    # Assemble Verilator args
+    args, vlog_srcs, vlog_hdrs, _ = _verilator_args(ctx, srcs, vopts)
+
+    args.add("--stdout")
+    args.add(output.path)
+
+    ctx.actions.run(
+        outputs = [output],
+        inputs = vlog_srcs + vlog_hdrs,
+        tools = [verilator_toolchain.all_files, ctx.executable._run_wrapper],
+        env = _verilator_toolchain_env(verilator_toolchain),
+        executable = ctx.executable._run_wrapper,
+        arguments = [args],
+        mnemonic = "VerilatorPreprocess",
+        progress_message = "[Verilator] Preprocessing {}".format(ctx.label),
+    )
+
+    return [DefaultInfo(files = depset([output]))]
+
+verilator_preprocess = rule(
+    implementation = _verilator_preprocess_impl,
+    attrs = {
+        "module": attr.label(
+            doc = "The top level module target to verilate.",
+            providers = [VerilogInfo],
+            mandatory = True,
+        ),
+        "out": attr.string(
+            doc = "Name of the generated preprocessed output file.",
+            default = "preprocessed.v",
+        ),
+        "vopts": attr.string_list(
+            doc = "Additional command line options to pass to Verilator",
+            default = ["-Wall"],
+        ),
+        "_run_wrapper": attr.label(
+            doc = "A wrapper utility for running verilator",
+            cfg = "exec",
+            executable = True,
+            default = Label("//verilator/private:verilator_run_wrapper"),
+        ),
+    },
+    provides = [
+        DefaultInfo,
+    ],
+    toolchains = [
+        "@rules_hdl//verilator:toolchain_type",
+    ],
 )
 
 def _verilator_run(ctx):

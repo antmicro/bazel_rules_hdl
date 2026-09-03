@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@rules_cc//cc:defs.bzl", "cc_test")
-load("//verilator:defs.bzl", "verilator_cc_binary", "verilator_cc_library", "verilator_lint", "verilator_run")
+load("//verilator:defs.bzl", "verilator_cc_binary", "verilator_cc_library", "verilator_lint", "verilator_preprocess", "verilator_run")
 load("//verilog:defs.bzl", "verilog_library")
 
 package(
@@ -212,4 +212,9 @@ verilator_lint(
     vopts = [
         "-Wall",
     ],
+)
+
+verilator_preprocess(
+    name = "adder_preprocess",
+    module = ":adder",
 )
