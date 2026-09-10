@@ -33,6 +33,14 @@ bazel_dep(name = "bzip2", version = "1.0.8.bcr.3")
 bazel_dep(name = "gperf", version = "3.1.bcr.2")
 bazel_dep(name = "tcl_lang", version = "8.6.16.bcr.1")
 bazel_dep(name = "openroad", version = "0.0.0", repo_name = "org_theopenroadproject")
+bazel_dep(name = "z3", version = "4.15.2")
+git_override(
+    module_name = "z3",
+    commit = "bd3e722b6b5a6e38bd4ecf44dbc789d4214350c8",
+    patches = ["//verilator:use_libc++.patch"],
+    remote = "https://github.com/Z3Prover/z3.git",
+)
+
 bazel_dep(name = "rules_7zip", version = "0.0.1")
 git_override(
     module_name = "rules_7zip",
