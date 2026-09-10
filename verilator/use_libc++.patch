@@ -1,0 +1,20 @@
+diff --git BUILD.bazel BUILD.bazel
+index 7fde74caa..f95361b30 100644
+--- BUILD.bazel
++++ BUILD.bazel
+@@ -21,6 +21,7 @@ cmake(
+     generate_args = [
+         "-G Ninja", 
+         "-D Z3_EXPORTED_TARGETS=",  # prevents installation, leaving symlinks between dylibs intact on copy
++        "-D CMAKE_CXX_FLAGS=-stdlib=libc++",
+     ],
+     lib_source = ":all_files",
+     out_binaries = ["z3"],
+@@ -39,6 +40,7 @@ cmake(
+         "-G Ninja", 
+         "-D BUILD_SHARED_LIBS=OFF",
+         "-D Z3_BUILD_LIBZ3_SHARED=OFF",
++        "-D CMAKE_CXX_FLAGS=-stdlib=libc++",
+     ],
+     lib_source = ":all_files",
+     out_binaries = ["z3"],

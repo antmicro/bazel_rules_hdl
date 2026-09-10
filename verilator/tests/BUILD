@@ -147,6 +147,26 @@ verilator_run(
 )
 
 verilog_library(
+    name = "minimal_randomization",
+    srcs = ["minimal_randomization.sv"],
+)
+
+verilator_cc_binary(
+    name = "minimal_randomization_binary",
+    module = ":minimal_randomization",
+    module_top = "minimal_randomization",
+    vopts = [
+        "-Wall",
+        "-Wno-fatal",
+    ],
+)
+
+verilator_run(
+    name = "minimal_randomization_run",
+    binary = ":minimal_randomization_binary",
+)
+
+verilog_library(
     name = "load_and_count_tb",
     srcs = [
         "load_and_count_tb.sv",

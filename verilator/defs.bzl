@@ -392,6 +392,41 @@ verilator_cc_library = rule(
     fragments = ["cpp"],
 )
 
+def _z3_executable_impl(ctx):
+    z3_files = ctx.attr.z3[DefaultInfo].files.to_list()
+
+    z3 = None
+    for f in z3_files:
+        if f.basename == "z3" and f.path.endswith("/bin/z3"):
+            z3 = f
+            break
+
+    if z3 == None:
+        fail("Could not find bin/z3 in @z3//:z3_static")
+
+    executable = ctx.actions.declare_file("z3")
+
+    ctx.actions.symlink(
+        output = executable,
+        target_file = z3,
+    )
+
+    return DefaultInfo(
+        executable = executable,
+        files = depset([executable]),
+    )
+
+z3_executable = rule(
+    implementation = _z3_executable_impl,
+    executable = True,
+    attrs = {
+        "z3": attr.label(
+            mandatory = True,
+            cfg = "exec",
+        ),
+    },
+)
+
 def _verilator_cc_binary(ctx):
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
@@ -521,13 +556,17 @@ def _verilator_run(ctx):
 
     # Target runfiles
     runfiles = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()
+    runfiles = runfiles + ctx.attr._smt_solver[DefaultInfo].default_runfiles.files.to_list()
 
     # Run
     ctx.actions.run(
         outputs = outputs,
         inputs = runfiles,
-        tools = [ctx.executable._run_wrapper],
+        tools = [ctx.executable._run_wrapper, ctx.executable._smt_solver],
         executable = ctx.executable._run_wrapper,
+        env = {
+            "Z3_DIR": ctx.executable._smt_solver.dirname,
+        },
         arguments = args,
         mnemonic = "RunVerilatedBinary",
         use_default_shell_env = False,
@@ -567,6 +606,12 @@ verilator_run = rule(
             cfg = "exec",
             executable = True,
             default = Label("//verilator/private:verilator_run_wrapper"),
+        ),
+        "_smt_solver": attr.label(
+            doc = "SMT solver for constrained randomization",
+            cfg = "exec",
+            executable = True,
+            default = Label(":z3"),
         ),
     },
     provides = [
