@@ -220,8 +220,18 @@ def _verilator_args(ctx, srcs, vopts = [], config_files = []):
         else:
             verilog_files.append(file)
 
-    # Include directories
-    include_dirs = depset([f.dirname for f in (verilog_files + all_hdrs)]).to_list()
+    # Base include directories
+    base_include_dirs = depset([f.dirname for f in (verilog_files + all_hdrs)]).to_list()
+
+    # For each include directory traverse it back to root and add all intermediate
+    # directories as potential locations of include files. Deduplicate the final
+    # list via depset()
+    include_dirs = []
+    for dirname in base_include_dirs:
+        parts = dirname.split("/")
+        for i in range(len(parts)):
+            include_dirs.append("/".join([parts[j] for j in range(0, i + 1)]))
+    include_dirs = depset(include_dirs).to_list()
 
     # Args
     args = ctx.actions.args()
