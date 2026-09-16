@@ -53,23 +53,15 @@ def _remove_duplicates_from_list(data):
 # Helpers for collecting information from context
 
 def _collect_verilog_files(ctx):
-    transitive_srcs_list = [
-        dep
-        for dep in ctx.attr.verilog_sources
-        if VerilogInfo in dep
-    ]
-    transitive_srcs_depset = depset(
+    verilog_info = depset(
         [],
-        transitive = [dep[VerilogInfo].dag for dep in transitive_srcs_list],
-    )
-    verilog_srcs = [
-        verilog_info_struct.srcs
-        for verilog_info_struct in transitive_srcs_depset.to_list()
-    ]
+        transitive = [library[VerilogInfo].dag for library in ctx.attr.verilog_libraries],
+    ).to_list()
 
-    return depset(
-        [src for sub_tuple in verilog_srcs for src in sub_tuple] +
-        ctx.files.verilog_sources,
+    return (
+        depset([src for entry in verilog_info for src in entry.srcs]),
+        depset([hdr for entry in verilog_info for hdr in entry.hdrs]),
+        depset([data for entry in verilog_info for data in entry.data]),
     )
 
 def _collect_vhdl_files(ctx):
@@ -120,11 +112,12 @@ def _get_path_to_set(ctx):
             path_elements.append("$PWD/" + short_path.rpartition("/")[0])
     return ":".join(_remove_duplicates_from_list(path_elements))
 
-def _get_test_command(ctx, verilog_files, vhdl_files):
+def _get_test_command(ctx, verilog_files, verilog_headers, vhdl_files):
     vhdl_sources_args = _files_to_argstring(vhdl_files, "vhdl_sources")
     verilog_sources_args = _files_to_argstring(verilog_files, "verilog_sources")
 
-    includes_args = _list_to_argstring(ctx.attr.includes, "includes")
+    includes = _remove_duplicates_from_list([header.dirname for header in verilog_headers])
+    includes_args = _list_to_argstring(includes, "includes")
     testcase_args = _list_to_argstring(ctx.attr.testcase, "testcase")
 
     # Use the --option=value form so argparse does not interpret simulator
@@ -171,7 +164,10 @@ def _get_test_command(ctx, verilog_files, vhdl_files):
     return command
 
 def _cocotb_test_impl(ctx):
-    verilog_files = _collect_verilog_files(ctx).to_list()
+    verilog_files, verilog_headers, verilog_data = _collect_verilog_files(ctx)
+    verilog_files = verilog_files.to_list()
+    verilog_headers = verilog_headers.to_list()
+    verilog_data = verilog_data.to_list()
     vhdl_files = _collect_vhdl_files(ctx).to_list()
 
     # create test script
@@ -179,13 +175,15 @@ def _cocotb_test_impl(ctx):
     runner_script = ctx.actions.declare_file(runner_script_fname)
     ctx.actions.write(
         output = runner_script,
-        content = _get_test_command(ctx, verilog_files, vhdl_files),
+        content = _get_test_command(ctx, verilog_files, verilog_headers, vhdl_files),
     )
 
     # specify dependencies for the script
     runfiles = ctx.runfiles(
         files = ctx.files.cocotb_wrapper +
                 verilog_files +
+                verilog_headers +
+                verilog_data +
                 vhdl_files +
                 ctx.files.test_module,
         transitive_files = _collect_transitive_files(ctx),
@@ -241,10 +239,6 @@ _cocotb_test_attrs = {
         doc = "Language of the HDL toplevel module",
         mandatory = True,
     ),
-    "includes": attr.string_list(
-        doc = "Verilog include directories",
-        default = [],
-    ),
     "parameters": attr.string_dict(
         doc = "Verilog parameters or VHDL generics",
         default = {},
@@ -287,10 +281,9 @@ _cocotb_test_attrs = {
         doc = "Enable verbose messages",
         default = False,
     ),
-    "verilog_sources": attr.label_list(
-        doc = "Verilog source files to build",
+    "verilog_libraries": attr.label_list(
+        doc = "Verilog libraries to build",
         providers = [VerilogInfo],
-        allow_files = True,
         default = [],
     ),
     "vhdl_sources": attr.label_list(
