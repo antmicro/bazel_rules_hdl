@@ -214,6 +214,20 @@ verilator_lint(
     ],
 )
 
+verilog_library(
+    name = "test_include",
+    srcs = ["test_include/consumer/test_include.sv"],
+    hdrs = [
+        "test_include/foo/bar/test_header.vh",
+    ],
+)
+
+verilator_lint(
+    name = "test_include_verilator_lint",
+    module = ":test_include",
+    module_top = "test_include",
+)
+
 verilator_preprocess(
     name = "adder_preprocess",
     module = ":adder",
