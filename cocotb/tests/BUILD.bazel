@@ -24,6 +24,7 @@ package(
 verilog_library(
     name = "counter",
     srcs = ["counter.v"],
+    hdrs = ["counter_params.svh"],
 )
 
 cocotb_test(
@@ -37,7 +38,7 @@ cocotb_test(
     parameters = {"COUNTER_WIDTH": "8"},
     seed = "1234567890",
     test_module = ["cocotb_counter.py"],
-    verilog_sources = [":counter"],
+    verilog_libraries = [":counter"],
     deps = [requirement("cocotb")],
 )
 
@@ -54,6 +55,6 @@ cocotb_test(
     sim = ["//cocotb:verilator"],
     sim_name = "verilator",
     test_module = ["cocotb_counter.py"],
-    verilog_sources = [":counter"],
+    verilog_libraries = [":counter"],
     deps = [requirement("cocotb")],
 )
