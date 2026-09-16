@@ -217,6 +217,7 @@ _cocotb_test_attrs = {
     ),
     "deps": attr.label_list(
         doc = "The list of python libraries to be linked in to the simulation target",
+        default = [Label("@rules_hdl_pip_deps_to_vendor//cocotb")],
         providers = [PyInfo],
     ),
     "extra_env": attr.string_list(
@@ -237,7 +238,7 @@ _cocotb_test_attrs = {
     ),
     "hdl_toplevel_lang": attr.string(
         doc = "Language of the HDL toplevel module",
-        mandatory = True,
+        default = "verilog",
     ),
     "parameters": attr.string_dict(
         doc = "Verilog parameters or VHDL generics",
