@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import argparse
-import sys
 import os
+import sys
 
 # This is unfortunate. The directory this is run in with directory 'cocotb'
 # in its path. This shadows the pip dep of the same name. We rearrange the path
@@ -23,13 +23,11 @@ sys.path = (
     [path for path in sys.path if "site-packages" in path] +
     [path for path in sys.path if "site-packages" not in path]
 )
-from cocotb.runner import get_runner, check_results_file
+from cocotb_tools.runner import get_results, get_runner
 
 
 cocotb_build_flags = [
     "hdl_library",
-    "verilog_sources",
-    "vhdl_sources",
     "includes",
     "defines",
     "parameters",
@@ -38,6 +36,7 @@ cocotb_build_flags = [
     "always",
     "build_dir",
     "verbose",
+    "waves",
 ]
 
 
@@ -174,9 +173,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     build_flags = filter_args(vars(args), cocotb_build_flags)
+    # Cocotb 2.x uses a single source list. Keep the previous mixed-language
+    # compilation order: VHDL first, followed by Verilog.
+    build_flags["sources"] = args.vhdl_sources + args.verilog_sources
     test_flags = filter_args(vars(args), cocotb_test_flags)
 
     runner = get_runner(args.sim)
     runner.build(**build_flags)
     results_xml = runner.test(**test_flags)
-    check_results_file(results_xml)
+    num_tests, num_failed = get_results(results_xml)
+    if num_failed:
+        print(f"Failed {num_failed} of {num_tests} tests", file=sys.stderr)
+        sys.exit(1)
