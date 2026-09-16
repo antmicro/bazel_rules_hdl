@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@rules_python//python:defs.bzl", "py_binary")
+load(":verilator/verilator_wrapper.bzl", "cocotb_verilator")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -26,4 +27,11 @@ py_binary(
     srcs_version = "PY3",
     visibility = ["//visibility:public"],
     deps = ["@rules_hdl_pip_deps_to_vendor//cocotb"],
+)
+
+cocotb_verilator(
+    name = "verilator",
+    binary = "@verilator//:verilator_executable",
+    root = "@verilator//:verilator_root",
+    visibility = ["//visibility:public"],
 )

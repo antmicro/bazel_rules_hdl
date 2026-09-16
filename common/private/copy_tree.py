@@ -14,7 +14,16 @@ def parse_args() -> argparse.Namespace:
         "--append-destination",
         action="append",
         default=[],
-        help="An additional directory appended to the destination"
+        help="An additional directory appended to the destination",
+    )
+
+    parser.add_argument(
+        "--file",
+        action="append",
+        default=[],
+        nargs=2,
+        metavar=("SOURCE", "RELATIVE_DESTINATION"),
+        help="Copy a source file to a path relative to the destination",
     )
 
     parser.add_argument(
@@ -27,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "destination",
         type=Path,
-        help="The destination directory"
+        help="The destination directory",
     )
 
     return parser.parse_args()
@@ -44,6 +53,11 @@ def main() -> None:
     dest.mkdir(exist_ok=True, parents=True)
     for file in args.srcs:
         shutil.copyfile(str(file), str(dest / file.name), follow_symlinks=True)
+
+    for source, relative_destination in args.file:
+        output = dest / relative_destination
+        output.parent.mkdir(exist_ok=True, parents=True)
+        shutil.copyfile(source, output, follow_symlinks=True)
 
 
 if __name__ == "__main__":

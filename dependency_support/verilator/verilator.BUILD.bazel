@@ -85,6 +85,36 @@ verilator_build_template(
     version = ":version",
 )
 
+verilator_build_template(
+    name = "verilated_mk",
+    out = "include/verilated.mk",
+    substitutions = {
+        "@AR@": "ar",
+        "@CFG_CXXFLAGS_COROUTINES@": "-fcoroutines",
+        "@CFG_CXXFLAGS_NO_UNUSED@": "-Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable",
+        "@CFG_CXXFLAGS_PCH_I@": "-include",
+        "@CFG_CXXFLAGS_PROFILE@": "-pg",
+        "@CFG_CXXFLAGS_STD@": "",
+        "@CFG_CXXFLAGS_STD_NEWEST@": "-std=gnu++17",
+        "@CFG_CXXFLAGS_WEXTRA@": "-Wextra",
+        "@CFG_CXX_VERSION@": "",
+        "@CFG_GCH_IF_CLANG@": "",
+        "@CFG_LDFLAGS_DYNAMIC@": "-rdynamic",
+        "@CFG_LDFLAGS_VERILATED@": "",
+        "@CFG_LDLIBS_DYNAMIC@": "-ldl",
+        "@CFG_LDLIBS_THREADS@": "-pthread -lpthread -latomic",
+        "@CFG_WITH_CCWARN@": "no",
+        "@CFG_WITH_DEV_GCOV@": "no",
+        "@CFG_WITH_LONGTESTS@": "no",
+        "@CXX@": "g++",
+        "@OBJCACHE@": "",
+        "@PERL@": "perl",
+        "@PYTHON3@": "python3",
+    },
+    template = "include/verilated.mk.in",
+    version = ":version",
+)
+
 verilator_astgen(
     name = "verilator_astgen",
     srcs = [
@@ -420,9 +450,21 @@ filegroup(
 
 verilator_root(
     name = "verilator_root",
-    include = [
-        "include/verilated_std.sv",
-        "include/verilated_std_waiver.vlt",
+    bin = [
+        "bin/verilator_ccache_report",
+        "bin/verilator_coverage",
+        "bin/verilator_includer",
     ],
+    fstcpp = glob(["include/fstcpp/*"]),
+    include = glob([
+        "include/*.cpp",
+        "include/*.h",
+        "include/*.sv",
+        "include/*.vlt",
+    ]) + [
+        ":verilated_config",
+        ":verilated_mk",
+    ],
+    vltstd = glob(["include/vltstd/*"]),
     visibility = ["//visibility:public"],
 )
