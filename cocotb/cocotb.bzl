@@ -14,6 +14,7 @@
 
 """Rules for running tests using Cocotb framework"""
 
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@rules_python//python:defs.bzl", "PyInfo")
 load("//verilog:defs.bzl", "VerilogInfo")
 
@@ -116,7 +117,7 @@ def _get_test_command(ctx, verilog_files, verilog_headers, vhdl_files):
     vhdl_sources_args = _files_to_argstring(vhdl_files, "vhdl_sources")
     verilog_sources_args = _files_to_argstring(verilog_files, "verilog_sources")
 
-    includes = _remove_duplicates_from_list([header.dirname for header in verilog_headers])
+    includes = _remove_duplicates_from_list([paths.dirname(header.short_path) or "." for header in verilog_headers])
     includes_args = _list_to_argstring(includes, "includes")
     testcase_args = _list_to_argstring(ctx.attr.testcase, "testcase")
 
