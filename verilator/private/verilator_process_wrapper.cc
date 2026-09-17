@@ -117,7 +117,7 @@ int main(int argc, char* argv[]) {
     }
     int result = std::system(cmd.c_str());
     if (result != 0) {
-        return result;
+        return WEXITSTATUS(result);
     }
 
     // Delete any non-deterministic files.
