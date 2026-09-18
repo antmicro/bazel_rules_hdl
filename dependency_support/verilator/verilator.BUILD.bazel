@@ -39,6 +39,11 @@ exports_files([
     "bin/verilator_coverage",
 ])
 
+_VERILATOR_CXXOPTS = [
+    "-std=c++20",
+    "-ffp-contract=off",
+]
+
 verilator_version(
     name = "version",
     changelog = "Changes",
@@ -95,7 +100,7 @@ verilator_build_template(
         "@CFG_CXXFLAGS_PCH_I@": "-include",
         "@CFG_CXXFLAGS_PROFILE@": "-pg",
         "@CFG_CXXFLAGS_STD@": "",
-        "@CFG_CXXFLAGS_STD_NEWEST@": "-std=gnu++17",
+        "@CFG_CXXFLAGS_STD_NEWEST@": "-std=c++20",
         "@CFG_CXXFLAGS_WEXTRA@": "-Wextra",
         "@CFG_CXX_VERSION@": "",
         "@CFG_GCH_IF_CLANG@": "",
@@ -308,7 +313,7 @@ cc_library(
         "src/config_package.h",
         "src/config_rev.h",
     ],
-    copts = [
+    copts = _VERILATOR_CXXOPTS + [
         # TODO: We should probably set this later
         "-DDEFENV_SYSTEMC_INCLUDE=\\\"@invalid@\\\"",
         "-DDEFENV_SYSTEMC_LIBDIR=\\\"@invalid@\\\"",
@@ -389,11 +394,9 @@ cc_library(
         "include/verilatedos_c.h",
     ],
     # TODO: Remove these once upstream fixes these warnings
-    copts = [
+    copts = _VERILATOR_CXXOPTS + [
         "-Wno-unused-const-variable",
         "-Wno-sign-compare",
-        "-std=c++17",
-        "-ffp-contract=off",
     ],
     includes = ["include"],
     linkopts = [
@@ -430,10 +433,7 @@ cc_library(
 cc_binary(
     name = "verilator_executable",
     srcs = ["src/Verilator.cpp"],
-    copts = [
-        "-std=c++17",
-        "-ffp-contract=off",
-    ],
+    copts = _VERILATOR_CXXOPTS,
     linkopts = [
         "-lpthread",
         "-latomic",
@@ -450,12 +450,6 @@ filegroup(
 
 verilator_root(
     name = "verilator_root",
-    bin = [
-        "bin/verilator_ccache_report",
-        "bin/verilator_coverage",
-        "bin/verilator_includer",
-    ],
-    fstcpp = glob(["include/fstcpp/*"]),
     include = glob([
         "include/*.cpp",
         "include/*.h",
@@ -465,6 +459,12 @@ verilator_root(
         ":verilated_config",
         ":verilated_mk",
     ],
-    vltstd = glob(["include/vltstd/*"]),
+    bin = [
+        "bin/verilator_ccache_report",
+        "bin/verilator_coverage",
+        "bin/verilator_includer",
+    ],
+    fstcpp = glob(["include/fstcpp/*"]),
     visibility = ["//visibility:public"],
+    vltstd = glob(["include/vltstd/*"]),
 )
