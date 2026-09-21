@@ -18,7 +18,7 @@ load("//verilog:defs.bzl", "verilog_library")
 
 package(
     default_applicable_licenses = ["//:package_license"],
-    default_visibility = ["//visibility:private"],
+    default_visibility = ["//visibility:public"],
 )
 
 verilog_library(
