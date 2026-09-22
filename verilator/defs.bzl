@@ -239,7 +239,7 @@ def _verilator_args(ctx, srcs, vopts = [], config_files = [], user_vopts = []):
     # Return args, sources, headers and runfiles
     return args, verilog_files, all_hdrs, runfiles
 
-def verilator_generate_cc(ctx, verilog_dags, module_top, trace = False, coverage = "none", opts = [], user_vopts = [], prefix = None):
+def verilator_generate_cc(ctx, verilog_dags, module_top, trace = False, trace_format = None, coverage = "none", opts = [], user_vopts = [], prefix = None):
     """Generate C++ sources for a Verilog design using the Verilator toolchain.
 
     Args:
@@ -247,6 +247,7 @@ def verilator_generate_cc(ctx, verilog_dags, module_top, trace = False, coverage
       verilog_dags: Verilog dependency DAGs containing the design sources.
       module_top: Name of the top-level Verilog module.
       trace: Whether to enable waveform tracing in the generated model.
+      trace_format: Optional waveform format (`vcd` or `fst`).
       coverage: Coverage instrumentation mode.
       opts: Verilator options controlled by the calling rule.
       user_vopts: Additional Verilator options supplied by the user.
@@ -272,8 +273,14 @@ def verilator_generate_cc(ctx, verilog_dags, module_top, trace = False, coverage
     vopts.extend(["--top-module", module_top])
     vopts.extend(["--prefix", prefix])
 
-    if trace:
-        vopts.extend(["--trace"])
+    if trace_format:
+        if not trace:
+            fail("trace_format requires trace = True")
+        if trace_format not in ["vcd", "fst"]:
+            fail("Unsupported trace format '{}'; expected 'vcd' or 'fst'".format(trace_format))
+        vopts.append("--trace-{}".format(trace_format))
+    elif trace:
+        vopts.append("--trace")
 
     if coverage == "all":
         vopts.extend(["--coverage"])
@@ -334,6 +341,7 @@ def verilator_build_binary(
         extra_deps = [],
         extra_runfiles = [],
         trace = False,
+        trace_format = None,
         coverage = "none",
         opts = [],
         user_vopts = [],
@@ -349,6 +357,7 @@ def verilator_build_binary(
       extra_deps: Additional C++ dependencies to link into the executable.
       extra_runfiles: Additional files required by the executable at runtime.
       trace: Whether to enable waveform tracing in the generated model.
+      trace_format: Optional waveform format (`vcd` or `fst`).
       coverage: Coverage instrumentation mode.
       opts: Verilator options controlled by the calling rule.
       user_vopts: Additional Verilator options supplied by the user.
@@ -363,6 +372,7 @@ def verilator_build_binary(
         verilog_dags = verilog_dags,
         module_top = module_top,
         trace = trace,
+        trace_format = trace_format,
         coverage = coverage,
         opts = opts,
         user_vopts = user_vopts,

@@ -22,6 +22,25 @@ load("//cocotb:private/common.bzl", "COCOTB_TEST_ATTRS", "create_prebuilt_cocotb
 load("//verilator:defs.bzl", "verilator_build_binary")
 load("//verilog:defs.bzl", "VerilogInfo")
 
+def _wave_config(wave_format):
+    return {
+        "fst": struct(
+            defines = ["VM_TRACE=1", "VM_TRACE_FST=1"],
+            trace = True,
+            trace_format = "fst",
+        ),
+        "none": struct(
+            defines = ["VM_TRACE=0"],
+            trace = False,
+            trace_format = None,
+        ),
+        "vcd": struct(
+            defines = ["VM_TRACE=1"],
+            trace = True,
+            trace_format = "vcd",
+        ),
+    }[wave_format]
+
 def _find_single_file(files, suffix):
     matches = [file for file in files if file.path.endswith(suffix)]
 
@@ -126,8 +145,7 @@ def _build_cocotb_verilator_simulator(ctx):
         "-G{}={}".format(key, ctx.attr.parameters[key])
         for key in sorted(ctx.attr.parameters.keys())
     ])
-
-    defines = ["VM_TRACE=1", "VM_TRACE_VCD=1"] if ctx.attr.waves else ["VM_TRACE=0"]
+    wave_config = _wave_config(ctx.attr.waves)
     linked = verilator_build_binary(
         ctx,
         verilog_dags = [library[VerilogInfo].dag for library in ctx.attr.verilog_libraries],
@@ -135,11 +153,12 @@ def _build_cocotb_verilator_simulator(ctx):
         extra_srcs = [cocotb_main],
         extra_deps = [cocotb_support],
         extra_runfiles = cocotb_libraries,
-        trace = ctx.attr.waves,
+        trace = wave_config.trace,
+        trace_format = wave_config.trace_format,
         opts = ["--vpi", "--public-flat-rw"],
         user_vopts = user_vopts,
         prefix = "Vtop",
-        defines = defines,
+        defines = wave_config.defines,
     )[0]
 
     simulator = ctx.actions.declare_file(
@@ -154,9 +173,13 @@ def _build_cocotb_verilator_simulator(ctx):
 
 def _cocotb_test_verilator_impl(ctx):
     simulator, simulator_runfiles = _build_cocotb_verilator_simulator(ctx)
+    wrapper_args = ["${TEST_TMPDIR:+--results_xml=$TEST_TMPDIR/results.xml}"]
+    if ctx.attr.waves != "none":
+        wrapper_args.append("${TEST_UNDECLARED_OUTPUTS_DIR:+--test_dir=$TEST_UNDECLARED_OUTPUTS_DIR}")
     return create_prebuilt_cocotb_test(
         ctx,
         build_dir = paths.dirname(simulator.short_path),
+        wrapper_args = wrapper_args,
         extra_files = [simulator],
         extra_runfiles = [simulator_runfiles],
     )
