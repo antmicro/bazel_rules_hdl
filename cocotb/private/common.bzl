@@ -134,7 +134,7 @@ def _get_build_args(ctx, verilog_files, verilog_headers, vhdl_files):
         defines_args
     )
 
-def _get_test_command(ctx, build_args = "", build_dir = None):
+def _get_test_command(ctx, build_args = "", build_dir = None, wrapper_args = []):
     testcase_args = _repeated_argstring(ctx.attr.testcase, "testcase")
     gpi_interfaces_args = _repeated_argstring(ctx.attr.gpi_interfaces, "gpi_interfaces")
     test_args = _repeated_argstring(ctx.attr.test_args, "test_args")
@@ -143,12 +143,13 @@ def _get_test_command(ctx, build_args = "", build_dir = None):
 
     parameters_args = _dict_to_argstring(ctx.attr.parameters, "parameters")
     verbose_args = " --verbose" if ctx.attr.verbose else ""
-    waves_args = " --waves" if ctx.attr.waves else ""
+    waves_args = " --waves" if ctx.attr.waves != "none" else ""
     seed_args = " --seed {}".format(ctx.attr.seed) if ctx.attr.seed != "" else ""
 
     test_module_args = _pymodules_to_argstring(ctx.files.test_module, "test_module")
     python_interpreter = ctx.toolchains["@rules_python//python:toolchain_type"].py3_runtime.interpreter.short_path
     build_dir_arg = " --build_dir \"$PWD/{}\"".format(build_dir) if build_dir else ""
+    wrapper_args_string = " " + " ".join(wrapper_args) if wrapper_args else ""
     simulator_path = _get_path_to_set(ctx)
     path_env = "PATH={}:$PATH ".format(simulator_path) if simulator_path else ""
 
@@ -169,11 +170,12 @@ def _get_test_command(ctx, build_args = "", build_dir = None):
         waves_args +
         seed_args +
         test_module_args +
-        build_dir_arg
+        build_dir_arg +
+        wrapper_args_string
     )
     return command
 
-def _create_cocotb_test(ctx, hdl_files, build_args = "", build_dir = None, extra_files = [], extra_runfiles = []):
+def _create_cocotb_test(ctx, hdl_files, build_args = "", build_dir = None, wrapper_args = [], extra_files = [], extra_runfiles = []):
     runner_script = ctx.actions.declare_file(ctx.label.name + "_cocotb_runner.sh")
     ctx.actions.write(
         output = runner_script,
@@ -181,6 +183,7 @@ def _create_cocotb_test(ctx, hdl_files, build_args = "", build_dir = None, extra
             ctx,
             build_args = build_args,
             build_dir = build_dir,
+            wrapper_args = wrapper_args,
         ),
     )
 
@@ -200,11 +203,12 @@ def _create_cocotb_test(ctx, hdl_files, build_args = "", build_dir = None, extra
         testing.TestEnvironment(env),
     ]
 
-def create_cocotb_test(ctx):
+def create_cocotb_test(ctx, wrapper_args = []):
     """Create a cocotb test that builds its simulator at test time.
 
     Args:
       ctx: Rule context for the cocotb test.
+      wrapper_args: Additional command-line arguments for the cocotb wrapper, as a list.
 
     Returns:
       Providers for the executable test runner and its test environment.
@@ -219,14 +223,16 @@ def create_cocotb_test(ctx):
         ctx,
         hdl_files = verilog_files + verilog_headers + verilog_data + vhdl_files,
         build_args = _get_build_args(ctx, verilog_files, verilog_headers, vhdl_files),
+        wrapper_args = wrapper_args,
     )
 
-def create_prebuilt_cocotb_test(ctx, build_dir, extra_files = [], extra_runfiles = []):
+def create_prebuilt_cocotb_test(ctx, build_dir, wrapper_args = [], extra_files = [], extra_runfiles = []):
     """Create a cocotb test that runs a simulator built by Bazel.
 
     Args:
       ctx: Rule context for the cocotb test.
       build_dir: Runfiles-relative directory containing the built simulator.
+      wrapper_args: Additional command-line arguments for the cocotb wrapper, as a list.
       extra_files: Additional files required by the simulator at runtime.
       extra_runfiles: Additional runfiles objects required by the simulator.
 
@@ -238,6 +244,7 @@ def create_prebuilt_cocotb_test(ctx, build_dir, extra_files = [], extra_runfiles
         ctx,
         hdl_files = verilog_data.to_list(),
         build_dir = build_dir,
+        wrapper_args = wrapper_args,
         extra_files = extra_files,
         extra_runfiles = extra_runfiles,
     )
@@ -316,8 +323,9 @@ COCOTB_TEST_ATTRS = {
         allow_files = [".vhd", ".vhdl"],
         default = [],
     ),
-    "waves": attr.bool(
-        doc = "Record signal traces",
-        default = True,
+    "waves": attr.string(
+        doc = "Waveform format. Use 'none' to disable signal traces.",
+        default = "fst",
+        values = ["none", "vcd", "fst"],
     ),
 }

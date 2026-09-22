@@ -17,7 +17,12 @@
 load("//cocotb:private/common.bzl", "COCOTB_TEST_ATTRS", "create_cocotb_test")
 
 def _cocotb_test_icarus_impl(ctx):
-    return create_cocotb_test(ctx)
+    if ctx.attr.waves == "vcd":
+        fail("Icarus only supports FST waveform output; set waves = 'fst' or 'none'")
+    wrapper_args = []
+    if ctx.attr.waves == "fst":
+        wrapper_args.append("${TEST_UNDECLARED_OUTPUTS_DIR:+--plusargs=+dumpfile_path=$TEST_UNDECLARED_OUTPUTS_DIR/dump.fst}")
+    return create_cocotb_test(ctx, wrapper_args = wrapper_args)
 
 _cocotb_test_icarus_attrs = dict(COCOTB_TEST_ATTRS)
 _cocotb_test_icarus_attrs.update({
