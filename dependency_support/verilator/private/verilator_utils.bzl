@@ -348,11 +348,7 @@ def _verilator_root_impl(ctx):
         ("include/vltstd", ctx.files.vltstd),
         ("bin", ctx.files.bin),
     ]:
-        for file in files:
-            cp_args.add("--file")
-            cp_args.add(file.path)
-            cp_args.add("{}/{}".format(destination, file.basename))
-    cp_args.add(dir.path)
+        cp_args.add_all(files, before_each = dir.path + "/" + destination)
 
     inputs = ctx.files.include + ctx.files.fstcpp + ctx.files.vltstd + ctx.files.bin
 
