@@ -173,22 +173,6 @@ def _only_hpp(f):
         return f.path
     return None
 
-def _copy_action(ctx, suffix, files, map_each):
-    dir = ctx.actions.declare_directory(ctx.label.name + suffix)
-
-    args = ctx.actions.args()
-    args.add_all(files, map_each = map_each)
-    args.add(dir.path)
-    ctx.actions.run(
-        mnemonic = "VerilatorCopyTree",
-        arguments = [args],
-        inputs = files,
-        outputs = [dir],
-        executable = ctx.executable._copy_tree,
-    )
-
-    return dir
-
 def _verilator_toolchain_env(toolchain):
     root_files = toolchain.root.files.to_list()
     if len(root_files) != 1:
@@ -301,12 +285,24 @@ def _verilator_cc(ctx, opts = []):
     )
 
     # Copy
+    # All files are copied in a single action to avoid compilation of unchanged files by cc_common.compile()
     copy_input = depset([output], transitive = [verilator_toolchain.shared[DefaultInfo].files])
+    output_cpp = ctx.actions.declare_directory(ctx.label.name + "_cpp")
+    output_hpp = ctx.actions.declare_directory(ctx.label.name + "_hpp")
 
-    verilator_output_cpp = _copy_action(ctx, "_cpp", copy_input, _only_cpp)
-    verilator_output_hpp = _copy_action(ctx, "_h", copy_input, _only_hpp)
+    args = ctx.actions.args()
+    args.add_all(copy_input, map_each = _only_cpp, before_each = output_cpp.path)
+    args.add_all(copy_input, map_each = _only_hpp, before_each = output_hpp.path)
 
-    return verilator_output_cpp, verilator_output_hpp, runfiles
+    ctx.actions.run(
+        mnemonic = "VerilatorCopyTree",
+        arguments = [args],
+        inputs = copy_input,
+        outputs = [output_cpp, output_hpp],
+        executable = ctx.executable._copy_tree,
+    )
+
+    return output_cpp, output_hpp, runfiles
 
 # Options from verilator/include/verilated.mk
 _VERILATOR_DEFAULT_COPTS = [
