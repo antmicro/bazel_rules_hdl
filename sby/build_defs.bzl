@@ -1,4 +1,4 @@
-# Copyright 2026 Antmicro
+# Copyright 2020-2026 bazel_rules_hdl Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -127,21 +127,18 @@ def _sby_formal_impl(ctx):
         direct = [sby_script] + verilog_files + verilog_hdr_files + sby_runfiles,
     )
 
+    # SBY's partition step changes the working directory
+    # Make sure to set the env up beforehand
+    commands = [
+        "set -euo pipefail",
+        'export PATH="/usr/bin:/bin"',
+        'exec "%s" --prefix "%s" -f "%s"' % (ctx.executable._sby_tool.path, base_workdir.path, sby_script.path),
+    ]
     ctx.actions.run_shell(
         outputs = [base_workdir] + task_workdirs.values(),
         inputs = inputs,
         tools = [ctx.executable._sby_tool],
-        # SBY's partition step changes the working directory
-        # Make sure to set the env up beforehand
-        command = """
-set -euo pipefail
-export PATH="/usr/bin:/bin"
-exec "{sby_path}" --prefix "{prefix}" -f "{sby_script}"
-""".format(
-            sby_path = ctx.executable._sby_tool.path,
-            prefix = base_workdir.path,
-            sby_script = sby_script.path,
-        ),
+        command = "\n".join(commands) + "\n",
         mnemonic = "SbyFormal",
         progress_message = "Running SBY Boundary Model Check %{label}",
     )
