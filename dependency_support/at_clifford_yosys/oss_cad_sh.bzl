@@ -49,6 +49,8 @@ def _oss_cad_sh_impl(ctx):
     return [DefaultInfo(executable = oss_cad_sh, runfiles = runfiles)]
 
 oss_cad_sh = rule(
+    # FIXME #104550 This implementation is not hermetic as it depends on a precompiled release
+    # Build Yosys and it's dependencies from source to resolve this
     doc = "Defines an executable that correctly execs script from OSS CAD suite.",
     implementation = _oss_cad_sh_impl,
     executable = True,
