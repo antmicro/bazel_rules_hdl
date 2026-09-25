@@ -1,4 +1,3 @@
-#!/bin/sh
 # Copyright 2026 bazel_rules_hdl Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,15 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -eu
+import os
+from pathlib import Path
 
-runfiles_dir="${RUNFILES_DIR:-$0.runfiles}"
-if [ ! -d "$runfiles_dir" ]; then
-    executable_dir="$(dirname "$0")"
-    workspace_dir="$(dirname "$executable_dir")"
-    runfiles_dir="$(dirname "$workspace_dir")"
-fi
+from rules_hdl_cocotb_wrapper.common import (
+    cocotb_argument_parser,
+    prepare_runner,
+    run_tests,
+)
 
-export VERILATOR_ROOT="$runfiles_dir/{ROOT}"
 
-exec "$runfiles_dir/{BINARY}" "$@"
+if __name__ == "__main__":
+    parser = cocotb_argument_parser()
+    parser.set_defaults(
+        test_dir=Path(os.environ.get("TEST_TMPDIR", "."), "cocotb"),
+    )
+    args = parser.parse_args()
+
+    runner, test_flags = prepare_runner(args, "verilator")
+    run_tests(runner, test_flags)

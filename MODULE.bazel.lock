@@ -694,7 +694,7 @@
     "//dependency_support:pdks_extension.bzl%pdks_extension": {
       "general": {
         "bzlTransitiveDigest": "IYNM95SxbcS/QGaJxuosUOAqQfYYKM1YrDML5GeNXAk=",
-        "usagesDigest": "ifj/G/aYpe9tgcki7Q5iI8Czq/q36oqaDVmxfD/LKys=",
+        "usagesDigest": "rKmFeaQVBjp7bdsNv/OkjlrDwNruRMi0uCbglUzvudE=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -891,8 +891,8 @@
     },
     "//dependency_support:tools_extension.bzl%tools_extension": {
       "general": {
-        "bzlTransitiveDigest": "OCRKvSqDbua+HICwHSd5FHT9IxgAm5Q3bX5PJ86ZYcw=",
-        "usagesDigest": "D8UVpQVHhlp0i5GVBL+gBsba3jNGLsioGk9eKcl3ks4=",
+        "bzlTransitiveDigest": "Fgnisd1laWv0/5FSQjTpgjN9Yoi237StLxVxWIYQMUU=",
+        "usagesDigest": "vRWxOrHMsSUkVGDuZvXgPaGGdJrmjQLjC4s+8qYpnSI=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -1503,7 +1503,7 @@
     "@@rules_7zip+//:extension_setup_7zip.bzl%extension_setup_7zip": {
       "general": {
         "bzlTransitiveDigest": "lQHO25Y262+9HO0EiqlPBqJnw+aW9pKbHgaBxJUBIWs=",
-        "usagesDigest": "BQPWZp00kq0fr7zAt2TGnQUwWIm9o60xx/7WDj/UV6I=",
+        "usagesDigest": "Ri2LGxkA+ryIRlTyc6Z3J7xOYy0d8oUTeRLfikHBeiI=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -2758,7 +2758,7 @@
     "@@toolchains_llvm+//toolchain/extensions:llvm.bzl%llvm": {
       "general": {
         "bzlTransitiveDigest": "i54NfnK6i34XT5yyh16sxeFE2U1s0aiixBtMQYMdAMo=",
-        "usagesDigest": "Mbqd5uRbUnrnygT7jjLXUhqmRy3A7ecT61tj42in/dQ=",
+        "usagesDigest": "lMjJw5D4vHH+Jg8pJNa0YMA+mZs9C1Q+FhvnxI1LMzM=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},

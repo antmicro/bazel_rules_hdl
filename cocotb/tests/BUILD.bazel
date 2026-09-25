@@ -48,8 +48,7 @@ cocotb_test(
     hdl_toplevel = "counter",
     parameters = {"COUNTER_WIDTH": "8"},
     seed = "1234567890",
-    sim = ["//cocotb:verilator"],
-    sim_name = "verilator",
+    sim = "verilator",
     test_module = ["cocotb_counter.py"],
     verilog_libraries = [":counter"],
 )
