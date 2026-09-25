@@ -152,6 +152,7 @@ def cc_compile_and_link_binary(ctx, srcs, hdrs, deps, runfiles, includes = [], d
 
     return [
         DefaultInfo(
+            files = depset([linking_output.executable]),
             executable = linking_output.executable,
             runfiles = ctx.runfiles(files = runfiles),
         ),
@@ -182,7 +183,7 @@ def _verilator_toolchain_env(toolchain):
         "VERILATOR_ROOT": root_files[0].path,
     }
 
-def _verilator_args(ctx, srcs, vopts = [], config_files = []):
+def _verilator_args(ctx, srcs, vopts = [], config_files = [], user_vopts = []):
     """Given a depset of input files to Verilator returns invocation arguments and list of source, header and run files.
     """
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
@@ -222,7 +223,7 @@ def _verilator_args(ctx, srcs, vopts = [], config_files = []):
     args.add(verilator_toolchain.verilator)
     args.add_all(vopts)
     args.add_all(verilator_toolchain.extra_vopts)
-    args.add_all(ctx.attr.vopts, expand_directories = False)
+    args.add_all(user_vopts, expand_directories = False)
 
     # Configuration files are passed like source files.
     # It's recommended to pass them before source files,
@@ -238,35 +239,56 @@ def _verilator_args(ctx, srcs, vopts = [], config_files = []):
     # Return args, sources, headers and runfiles
     return args, verilog_files, all_hdrs, runfiles
 
-def _verilator_cc(ctx, opts = []):
+def verilator_generate_cc(ctx, verilog_dags, module_top, trace = False, coverage = "none", opts = [], user_vopts = [], prefix = None):
+    """Generate C++ sources for a Verilog design using the Verilator toolchain.
+
+    Args:
+      ctx: Rule context used to declare and run the Verilator actions.
+      verilog_dags: Verilog dependency DAGs containing the design sources.
+      module_top: Name of the top-level Verilog module.
+      trace: Whether to enable waveform tracing in the generated model.
+      coverage: Coverage instrumentation mode.
+      opts: Verilator options controlled by the calling rule.
+      user_vopts: Additional Verilator options supplied by the user.
+      prefix: Optional prefix for generated model classes and files.
+
+    Returns:
+      A tuple containing the generated C++ sources, generated headers, and
+      runtime files required by the design.
+    """
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
 
     # Sources
-    srcs = depset([], transitive = [ctx.attr.module[VerilogInfo].dag]).to_list()
+    srcs = depset([], transitive = verilog_dags).to_list()
 
     output = ctx.actions.declare_directory(ctx.label.name + "-gen")
-    prefix = "V" + ctx.attr.module_top
+    prefix = prefix or "V" + module_top
 
     # Options
     vopts = list(opts)
 
     vopts.extend(["--cc"])
     vopts.extend(["--Mdir", output.path])
-    vopts.extend(["--top-module", ctx.attr.module_top])
+    vopts.extend(["--top-module", module_top])
     vopts.extend(["--prefix", prefix])
 
-    if ctx.attr.trace:
+    if trace:
         vopts.extend(["--trace"])
 
-    if ctx.attr.coverage == "all":
+    if coverage == "all":
         vopts.extend(["--coverage"])
-    if ctx.attr.coverage == "line":
+    if coverage == "line":
         vopts.extend(["--coverage-line"])
-    if ctx.attr.coverage == "toggle":
+    if coverage == "toggle":
         vopts.extend(["--coverage-toggle"])
 
     # Assemble Verilator args
-    args, vlog_srcs, vlog_hdrs, runfiles = _verilator_args(ctx, srcs, vopts)
+    args, vlog_srcs, vlog_hdrs, runfiles = _verilator_args(
+        ctx,
+        srcs,
+        vopts,
+        user_vopts = user_vopts,
+    )
 
     env = _verilator_toolchain_env(verilator_toolchain)
     if verilator_toolchain._avoid_nondeterministic_outputs:
@@ -303,6 +325,70 @@ def _verilator_cc(ctx, opts = []):
     )
 
     return output_cpp, output_hpp, runfiles
+
+def verilator_build_binary(
+        ctx,
+        verilog_dags,
+        module_top,
+        extra_srcs = [],
+        extra_deps = [],
+        extra_runfiles = [],
+        trace = False,
+        coverage = "none",
+        opts = [],
+        user_vopts = [],
+        prefix = None,
+        defines = []):
+    """Generate a Verilated model and link it into an executable.
+
+    Args:
+      ctx: Rule context used to declare the generation and linking actions.
+      verilog_dags: Verilog dependency DAGs containing the design sources.
+      module_top: Name of the top-level Verilog module.
+      extra_srcs: Additional C++ sources to compile into the executable.
+      extra_deps: Additional C++ dependencies to link into the executable.
+      extra_runfiles: Additional files required by the executable at runtime.
+      trace: Whether to enable waveform tracing in the generated model.
+      coverage: Coverage instrumentation mode.
+      opts: Verilator options controlled by the calling rule.
+      user_vopts: Additional Verilator options supplied by the user.
+      prefix: Optional prefix for generated model classes and files.
+      defines: C++ preprocessor definitions used when compiling the model.
+
+    Returns:
+      Providers for the linked Verilator executable.
+    """
+    generated_cpp, generated_hpp, design_runfiles = verilator_generate_cc(
+        ctx,
+        verilog_dags = verilog_dags,
+        module_top = module_top,
+        trace = trace,
+        coverage = coverage,
+        opts = opts,
+        user_vopts = user_vopts,
+        prefix = prefix,
+    )
+    verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
+    return cc_compile_and_link_binary(
+        ctx,
+        srcs = [generated_cpp] + extra_srcs,
+        hdrs = [generated_hpp],
+        deps = verilator_toolchain.deps + extra_deps,
+        runfiles = design_runfiles + extra_runfiles,
+        includes = [generated_hpp.path],
+        defines = defines,
+    )
+
+def _verilator_cc(ctx, opts = []):
+    return verilator_generate_cc(
+        ctx,
+        verilog_dags = [ctx.attr.module[VerilogInfo].dag],
+        module_top = ctx.attr.module_top,
+        trace = ctx.attr.trace,
+        coverage = ctx.attr.coverage,
+        opts = opts,
+        user_vopts = ctx.attr.vopts,
+    )
 
 # Options from verilator/include/verilated.mk
 _VERILATOR_DEFAULT_COPTS = [
@@ -433,28 +519,19 @@ z3_executable = rule(
 )
 
 def _verilator_cc_binary(ctx):
-    verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
-
-    # Do verilation
-    verilator_output_cpp, verilator_output_hpp, runfiles = _verilator_cc(
-        ctx,
-        opts = ["--main"],
-    )
-
-    # Do actual compile
     defines = ["VM_TRACE"] if ctx.attr.trace else []
-
     if ctx.attr.coverage != "none":
         defines.append("VM_COVERAGE")
 
-    result = cc_compile_and_link_binary(
+    result = verilator_build_binary(
         ctx,
-        srcs = [verilator_output_cpp],
-        hdrs = [verilator_output_hpp],
+        verilog_dags = [ctx.attr.module[VerilogInfo].dag],
+        module_top = ctx.attr.module_top,
+        trace = ctx.attr.trace,
+        coverage = ctx.attr.coverage,
+        opts = ["--main"],
+        user_vopts = ctx.attr.vopts,
         defines = defines,
-        runfiles = runfiles,
-        includes = [verilator_output_hpp.path],
-        deps = verilator_toolchain.deps,
     )
 
     return result + [VerilatedBinaryInfo(coverage = ctx.attr.coverage, trace = ctx.attr.trace)]
@@ -530,7 +607,12 @@ def _verilator_preprocess_impl(ctx):
     vopts.extend(["-P"])
 
     # Assemble Verilator args
-    args, vlog_srcs, vlog_hdrs, _ = _verilator_args(ctx, srcs, vopts)
+    args, vlog_srcs, vlog_hdrs, _ = _verilator_args(
+        ctx,
+        srcs,
+        vopts,
+        user_vopts = ctx.attr.vopts,
+    )
 
     args.add("--stdout")
     args.add(output.path)
@@ -698,7 +780,13 @@ def _verilator_lint(ctx):
         "--lint-only",
     ]
     vopts.extend(["--top-module", ctx.attr.module_top])
-    args, vlog_srcs, vlog_hdrs, _ = _verilator_args(ctx, srcs, vopts, ctx.files.config_files)
+    args, vlog_srcs, vlog_hdrs, _ = _verilator_args(
+        ctx,
+        srcs,
+        vopts,
+        ctx.files.config_files,
+        user_vopts = ctx.attr.vopts,
+    )
 
     # Capture stderr to the log file
     log_file = ctx.actions.declare_file(ctx.label.name + ".log")

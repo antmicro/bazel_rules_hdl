@@ -13,16 +13,8 @@
 # limitations under the License.
 
 import argparse
-import os
 import sys
 
-# This is unfortunate. The directory this is run in with directory 'cocotb'
-# in its path. This shadows the pip dep of the same name. We rearrange the path
-# here so the pip dep wins.
-sys.path = (
-    [path for path in sys.path if "site-packages" in path] +
-    [path for path in sys.path if "site-packages" not in path]
-)
 from cocotb_tools.runner import get_results, get_runner
 
 
@@ -75,7 +67,6 @@ def cocotb_argument_parser():
 
     parser = argparse.ArgumentParser(description="Runs the Cocotb framework from Bazel")
 
-    parser.add_argument("--sim", default="icarus", help="Default simulator")
     parser.add_argument(
         "--hdl_library", default="top", help="The library name to compile into"
     )
@@ -133,15 +124,28 @@ def cocotb_argument_parser():
     )
     parser.add_argument(
         "--gpi_interfaces",
+        action="append",
         default=None,
         help="List of GPI interfaces to use, with the first one being the entry point",
     )
     parser.add_argument(
-        "--testcase", default=None, help="Name(s) of a specific testcase(s) to run"
+        "--testcase",
+        action="append",
+        default=None,
+        help="Name(s) of a specific testcase(s) to run",
     )
     parser.add_argument("--seed", default=None, help="A specific random seed to use")
     parser.add_argument(
-        "--plusargs", default=[], help="'plusargs' to set for the simulator"
+        "--test_args",
+        action="append",
+        default=[],
+        help="Extra arguments for the simulator",
+    )
+    parser.add_argument(
+        "--plusargs",
+        action="append",
+        default=[],
+        help="'plusargs' to set for the simulator",
     )
     parser.add_argument(
         "--extra_env",
@@ -164,22 +168,23 @@ def cocotb_argument_parser():
         default="results.xml",
         help="Name of xUnit XML file to store test results in",
     )
-
     return parser
 
 
-if __name__ == "__main__":
-    parser = cocotb_argument_parser()
-    args = parser.parse_args()
-
+def get_build_flags(args):
     build_flags = filter_args(vars(args), cocotb_build_flags)
     # Cocotb 2.x uses a single source list. Keep the previous mixed-language
     # compilation order: VHDL first, followed by Verilog.
     build_flags["sources"] = args.vhdl_sources + args.verilog_sources
-    test_flags = filter_args(vars(args), cocotb_test_flags)
+    return build_flags
 
-    runner = get_runner(args.sim)
-    runner.build(**build_flags)
+
+def prepare_runner(args, sim):
+    test_flags = filter_args(vars(args), cocotb_test_flags)
+    return get_runner(sim), test_flags
+
+
+def run_tests(runner, test_flags):
     results_xml = runner.test(**test_flags)
     num_tests, num_failed = get_results(results_xml)
     if num_failed:
