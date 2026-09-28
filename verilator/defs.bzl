@@ -381,7 +381,7 @@ def verilator_build_binary(
     verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
     return cc_compile_and_link_binary(
         ctx,
-        srcs = [generated_cpp] + extra_srcs,
+        srcs = extra_srcs + [generated_cpp],
         hdrs = [generated_hpp],
         deps = verilator_toolchain.deps + extra_deps,
         runfiles = design_runfiles + extra_runfiles,
