@@ -890,7 +890,7 @@
     },
     "//dependency_support:tools_extension.bzl%tools_extension": {
       "general": {
-        "bzlTransitiveDigest": "ke3xkrRQsIwBklBnyIhik7/2pPr4KkxlDEYRHw20xyU=",
+        "bzlTransitiveDigest": "CypYnzPYxAqO9RQcXT5AXCDIr6UBy88uPIMefdNZFe4=",
         "usagesDigest": "D8UVpQVHhlp0i5GVBL+gBsba3jNGLsioGk9eKcl3ks4=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
@@ -915,10 +915,10 @@
             "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
             "attributes": {
               "urls": [
-                "https://github.com/steveicarus/iverilog/archive/v12_0.tar.gz"
+                "https://github.com/steveicarus/iverilog/archive/2e81fcccb36edd2c4dd357034061fc9f2df36548.tar.gz"
               ],
-              "strip_prefix": "iverilog-12_0",
-              "sha256": "a68cb1ef7c017ef090ebedb2bc3e39ef90ecc70a3400afb4aa94303bc3beaa7d",
+              "strip_prefix": "iverilog-2e81fcccb36edd2c4dd357034061fc9f2df36548",
+              "sha256": "8881ebf9e04fe2206b8aa88eb18775dc040fc429f7fb5c7e93a309e6c1716949",
               "build_file": "@@//dependency_support/com_icarus_iverilog:bundled.BUILD.bazel"
             }
           }

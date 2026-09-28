@@ -25,10 +25,10 @@ def _tools_extension_impl(module_ctx):
         http_archive,
         name = "com_icarus_iverilog",
         urls = [
-            "https://github.com/steveicarus/iverilog/archive/v12_0.tar.gz",
+            "https://github.com/steveicarus/iverilog/archive/2e81fcccb36edd2c4dd357034061fc9f2df36548.tar.gz",
         ],
-        strip_prefix = "iverilog-12_0",
-        sha256 = "a68cb1ef7c017ef090ebedb2bc3e39ef90ecc70a3400afb4aa94303bc3beaa7d",
+        strip_prefix = "iverilog-2e81fcccb36edd2c4dd357034061fc9f2df36548",
+        sha256 = "8881ebf9e04fe2206b8aa88eb18775dc040fc429f7fb5c7e93a309e6c1716949",
         build_file = "//dependency_support/com_icarus_iverilog:bundled.BUILD.bazel",
     )
 

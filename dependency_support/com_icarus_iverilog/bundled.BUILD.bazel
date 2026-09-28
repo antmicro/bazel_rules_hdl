@@ -110,11 +110,15 @@ cc_library(
         "libmisc/StringHeap.cc",
     ],
     hdrs = [
+        "ivl_alloc.h",
         "libmisc/LineInfo.h",
         "libmisc/StringHeap.h",
     ],
     copts = ["-Wno-unused-variable"],
-    includes = ["libmisc"],
+    includes = [
+        "libmisc",
+        ".",
+    ],
 )
 
 cc_binary(
@@ -124,12 +128,15 @@ cc_binary(
             "*.cc",
             "*.h",
         ],
-        exclude = ["elab_anet.cc"],
+        exclude = [
+            "elab_anet.cc",
+            # Release archives may contain a pregenerated copy, but the build
+            # uses the copy generated from lexor_keyword.gperf below.
+            "lexor_keyword.cc",
+        ],
     ) + [
         ":config_h",
-        "vvp/ivl_dlfcn.h",
         ":lexor_keyword_cc",
-        ":version_tag_h",
         ":parse_gen_cc",
         ":parse_h",
         ":syn-rules_gen_cc",
@@ -150,6 +157,7 @@ cc_binary(
     ],
     deps = [
         ":ivl-misc",
+        ":version_headers",
         ":vpi_user",
     ],
 )
@@ -248,8 +256,6 @@ cc_binary(
     ]) + [
         ":config_h",
         "ivl_alloc.h",
-        "version_base.h",
-        ":version_tag_h",
     ],
     copts = [
         "-D_GNU_SOURCE",
@@ -270,6 +276,7 @@ cc_binary(
     deps = [
         ":cflexor",
         ":cfparse",
+        ":version_headers",
     ],
 )
 
@@ -321,9 +328,8 @@ cc_binary(
         "vvp/*.h",
     ]) + [
         "ivl_alloc.h",
+        "ivl_dlfcn.h",
         "sv_vpi_user.h",
-        "version_base.h",
-        ":version_tag_h",
         ":gen_tables",
         ":vvp_gen__vvp_config_h",
         ":vvp_parse_gen_cc",
@@ -348,6 +354,7 @@ cc_binary(
         "-Wl,--export-dynamic",
     ],
     deps = [
+        ":version_headers",
         ":vpi_user",
         ":vvp_config_hdrs",
         "@bzip2//:bz2",
@@ -450,8 +457,6 @@ cc_binary(
     ]) + [
         ":config_h",
         "ivl_alloc.h",
-        "version_base.h",
-        ":version_tag_h",
     ],
     copts = ["-Wno-unused-variable"],
     # Do not sort: dot last.
@@ -459,7 +464,10 @@ cc_binary(
         "ivlpp",
         ".",
     ],
-    deps = [":ivlpp_lexor"],
+    deps = [
+        ":ivlpp_lexor",
+        ":version_headers",
+    ],
 )
 
 copy(
@@ -489,7 +497,7 @@ vpi_binary(
         ":config_h",
         "ivl_alloc.h",
         "sv_vpi_user.h",
-        "version_base.h",
+        ":version_base_h",
         "vpi/fastlz.c",
         "vpi/fastlz.h",
         "vpi/fstapi.c",
@@ -771,8 +779,6 @@ vpi_binary(
     ]) + [
         "ivl_alloc.h",
         "ivl_target.h",
-        "version_base.h",
-        ":version_tag_h",
         ":tgt_vvp__vvp_config_h",
     ],
     out = "vvp.tgt",
@@ -786,6 +792,7 @@ vpi_binary(
         "tgt-vvp",
     ],
     # The code has atrocious const hygiene. Produces mounds of warnings.
+    deps = [":version_headers"],
 )
 
 genrule(
@@ -846,9 +853,25 @@ pseudo_configure(
 )
 
 genrule(
+    name = "version_base_h",
+    srcs = ["version_base.h.in"],
+    outs = ["version_base.h"],
+    cmd = "sed -e 's/@VERSION_MAJOR@/14/' -e 's/@VERSION_MINOR@/0/' -e 's/@VERSION_EXTRA@/ (devel)/' $< > $@",
+)
+
+genrule(
     name = "version_tag_h",
     outs = ["version_tag.h"],
-    cmd = "echo '#define VERSION_TAG \"v12_0\"' > $@",
+    cmd = "echo '#define VERSION_TAG \"2e81fcccb36edd2c4dd357034061fc9f2df36548\"' > $@",
+)
+
+cc_library(
+    name = "version_headers",
+    hdrs = [
+        ":version_base_h",
+        ":version_tag_h",
+    ],
+    includes = ["."],
 )
 
 # Trivial integration tests to confirm iverilog is minimally functional.
