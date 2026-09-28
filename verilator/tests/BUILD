@@ -14,6 +14,7 @@
 
 load("@rules_cc//cc:defs.bzl", "cc_test")
 load("//verilator:defs.bzl", "verilator_cc_binary", "verilator_cc_library", "verilator_lint", "verilator_preprocess", "verilator_run")
+load("//verilator/package:defs.bzl", "verilator_package")
 load("//verilog:defs.bzl", "verilog_library")
 
 package(
@@ -97,6 +98,12 @@ verilog_library(
     deps = [
         ":nested_module_1",
     ],
+)
+
+verilator_package(
+    name = "nested_module_2_verilator_package",
+    module_top = "nested_module_2",
+    verilog_library = ":nested_module_2",
 )
 
 verilator_cc_library(
@@ -190,6 +197,13 @@ verilator_cc_binary(
 verilator_run(
     name = "load_and_count_tb_run",
     binary = ":load_and_count_tb_binary",
+)
+
+verilator_package(
+    name = "test_include_verilator_package",
+    copts = ["-O2"],
+    module_top = "test_include",
+    verilog_library = ":test_include",
 )
 
 verilator_lint(

@@ -2,6 +2,7 @@
 
 load("//macros:log_test.bzl", "log_test")
 load("//verilator:defs.bzl", "verilator_cc_binary", "verilator_run")
+load("//verilator/package:defs.bzl", "verilator_package")
 
 _DEFAULT_COVERAGE = select({
     Label("//macros:coverage_is_none"): "none",
@@ -136,6 +137,12 @@ def sim_genrules(
         coverage: types of coverage to collect
     """
 
+    # Resolve these once so every generated target, including the package,
+    # uses the same label and default base name.
+    module = native.package_relative_label(module)
+    if name == None:
+        name = module.name
+
     # Generate build targets
     sim_build(
         module = module,
@@ -156,3 +163,13 @@ def sim_genrules(
         extra_verilator_args = extra_verilator_run_args,
         extra_bazel_tags = extra_bazel_tags,
     )
+
+    # Generate export package target
+    if "verilator" in simulators:
+        verilator_package(
+            name = name + "_verilator_package",
+            module_top = top,
+            verilog_library = module,
+            copts = ["-std=c++20"],
+            vopts = _VERILATOR_VOPTS + extra_verilator_binary_vopts,
+        )
