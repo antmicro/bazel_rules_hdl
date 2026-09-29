@@ -169,7 +169,7 @@ def _build_cocotb_verilator_simulator(ctx):
 
 def _cocotb_test_verilator_impl(ctx):
     simulator, simulator_runfiles = _build_cocotb_verilator_simulator(ctx)
-    wrapper_args = ["${TEST_TMPDIR:+--results_xml=$TEST_TMPDIR/results.xml}"]
+    wrapper_args = [""]
     if ctx.attr.waves != "none":
         wrapper_args.append("${TEST_UNDECLARED_OUTPUTS_DIR:+--test_dir=$TEST_UNDECLARED_OUTPUTS_DIR}")
     return create_prebuilt_cocotb_test(

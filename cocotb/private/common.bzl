@@ -153,6 +153,9 @@ def _get_test_command(ctx, build_args = "", build_dir = None, wrapper_args = [])
     simulator_path = _get_path_to_set(ctx)
     path_env = "PATH={}:$PATH ".format(simulator_path) if simulator_path else ""
 
+    ## XML_OUTPUT_FILE is define automatically by bazel test
+    result_xml_arg = ' --results_xml "$XML_OUTPUT_FILE"'
+
     command = (
         path_env +
         str(python_interpreter) +
@@ -171,6 +174,7 @@ def _get_test_command(ctx, build_args = "", build_dir = None, wrapper_args = [])
         seed_args +
         test_module_args +
         build_dir_arg +
+        result_xml_arg +
         wrapper_args_string
     )
     return command
