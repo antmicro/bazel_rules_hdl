@@ -20,10 +20,10 @@ def _tools_extension_impl(module_ctx):
         http_archive,
         name = "at_clifford_yosys_data",
         urls = [
-            "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-08-10/oss-cad-suite-linux-x64-20260810.tgz",
+            "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-09-30/oss-cad-suite-linux-x64-20260930.tgz",
         ],
         type = "tar.gz",
-        sha256 = "4d1137c56eaa7f2fadce7dd7f79b614cc5f7862684bcbe79765bb9a1f9037db0",
+        sha256 = "9e50078dd84062bb78b19cc27a2185b9d37f8cd3d80c03242ec6d85044895fc1",
         strip_prefix = "oss-cad-suite",
         build_file = "//dependency_support/at_clifford_yosys:bundled.BUILD.bazel",
     )
