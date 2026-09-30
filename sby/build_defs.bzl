@@ -55,8 +55,7 @@ def _sby_formal_impl(ctx):
         script_lines.append("{} \\".format(opt))
 
     ## These are copied in yosys running directory, thus taking file name only
-    for h in verilog_hdr_files:
-        script_lines.append("-I {} \\".format(h.path.split("/")[-1]))
+    ## Header files are all flattened in the workdir, so no need for dedicated actions on those
     for f in verilog_files:
         script_lines.append("{} \\".format(f.path.split("/")[-1]))
 
@@ -73,7 +72,7 @@ def _sby_formal_impl(ctx):
     # Pass the file list
     script_lines.append("[files]")
     for h in verilog_hdr_files:
-        script_lines.append("-I {}".format(h.path))
+        script_lines.append("{}".format(h.path))
     for f in verilog_files:
         script_lines.append("{}".format(f.path))
 
