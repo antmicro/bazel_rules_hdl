@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//macros:sim_genrules.bzl", "sim_run")
+load("//macros:sim_genrules.bzl", "sim_genrules")
 
 package(default_applicable_licenses = ["//:package_license"])
 
-alias(
-    name = "minimal_randomization_verilator_bin",
-    actual = "//verilator/tests:minimal_randomization_binary",
-)
-
-sim_run(
+sim_genrules(
     module = "//verilator/tests:minimal_randomization",
+    top = "minimal_randomization",
 )
