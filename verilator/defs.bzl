@@ -239,15 +239,14 @@ def _verilator_args(ctx, srcs, vopts = [], config_files = [], user_vopts = []):
     # Return args, sources, headers and runfiles
     return args, verilog_files, all_hdrs, runfiles
 
-def verilator_generate_cc(ctx, verilog_dags, module_top, trace = False, trace_format = None, coverage = "none", opts = [], user_vopts = [], prefix = None):
+def verilator_generate_cc(ctx, verilog_dags, module_top, trace = "none", coverage = "none", opts = [], user_vopts = [], prefix = None):
     """Generate C++ sources for a Verilog design using the Verilator toolchain.
 
     Args:
       ctx: Rule context used to declare and run the Verilator actions.
       verilog_dags: Verilog dependency DAGs containing the design sources.
       module_top: Name of the top-level Verilog module.
-      trace: Whether to enable waveform tracing in the generated model.
-      trace_format: Optional waveform format (`vcd` or `fst`).
+      trace: Waveform format (`none`, `vcd`, or `fst`).
       coverage: Coverage instrumentation mode.
       opts: Verilator options controlled by the calling rule.
       user_vopts: Additional Verilator options supplied by the user.
@@ -273,14 +272,10 @@ def verilator_generate_cc(ctx, verilog_dags, module_top, trace = False, trace_fo
     vopts.extend(["--top-module", module_top])
     vopts.extend(["--prefix", prefix])
 
-    if trace_format:
-        if not trace:
-            fail("trace_format requires trace = True")
-        if trace_format not in ["vcd", "fst"]:
-            fail("Unsupported trace format '{}'; expected 'vcd' or 'fst'".format(trace_format))
-        vopts.append("--trace-{}".format(trace_format))
-    elif trace:
-        vopts.append("--trace")
+    if trace not in ["none", "vcd", "fst"]:
+        fail("Unsupported trace format '{}'; expected 'none', 'vcd', or 'fst'".format(trace))
+    if trace != "none":
+        vopts.append("--trace-{}".format(trace))
 
     if coverage == "all":
         vopts.extend(["--coverage"])
@@ -340,8 +335,7 @@ def verilator_build_binary(
         extra_srcs = [],
         extra_deps = [],
         extra_runfiles = [],
-        trace = False,
-        trace_format = None,
+        trace = "none",
         coverage = "none",
         opts = [],
         user_vopts = [],
@@ -356,8 +350,7 @@ def verilator_build_binary(
       extra_srcs: Additional C++ sources to compile into the executable.
       extra_deps: Additional C++ dependencies to link into the executable.
       extra_runfiles: Additional files required by the executable at runtime.
-      trace: Whether to enable waveform tracing in the generated model.
-      trace_format: Optional waveform format (`vcd` or `fst`).
+      trace: Waveform format (`none`, `vcd`, or `fst`).
       coverage: Coverage instrumentation mode.
       opts: Verilator options controlled by the calling rule.
       user_vopts: Additional Verilator options supplied by the user.
@@ -372,7 +365,6 @@ def verilator_build_binary(
         verilog_dags = verilog_dags,
         module_top = module_top,
         trace = trace,
-        trace_format = trace_format,
         coverage = coverage,
         opts = opts,
         user_vopts = user_vopts,
@@ -425,7 +417,7 @@ def _verilator_cc_library(ctx):
     verilator_output_cpp, verilator_output_hpp, runfiles = _verilator_cc(ctx)
 
     # Do actual compile
-    defines = ["VM_TRACE"] if ctx.attr.trace else []
+    defines = ["VM_TRACE"] if ctx.attr.trace != "none" else []
 
     return cc_compile_and_link_static_library(
         ctx,
@@ -457,9 +449,10 @@ verilator_cc_library = rule(
             doc = "The name of the verilog module to verilate.",
             mandatory = True,
         ),
-        "trace": attr.bool(
-            doc = "Enable tracing for Verilator",
-            default = False,
+        "trace": attr.string(
+            doc = "Waveform format (`none`, `vcd`, or `fst`)",
+            default = "none",
+            values = ["none", "vcd", "fst"],
         ),
         "vopts": attr.string_list(
             doc = "Additional command line options to pass to Verilator",
@@ -529,7 +522,7 @@ z3_executable = rule(
 )
 
 def _verilator_cc_binary(ctx):
-    defines = ["VM_TRACE"] if ctx.attr.trace else []
+    defines = ["VM_TRACE"] if ctx.attr.trace != "none" else []
     if ctx.attr.coverage != "none":
         defines.append("VM_COVERAGE")
 
@@ -544,7 +537,10 @@ def _verilator_cc_binary(ctx):
         defines = defines,
     )
 
-    return result + [VerilatedBinaryInfo(coverage = ctx.attr.coverage, trace = ctx.attr.trace)]
+    return result + [VerilatedBinaryInfo(
+        coverage = ctx.attr.coverage,
+        trace = ctx.attr.trace,
+    )]
 
 verilator_cc_binary = rule(
     implementation = _verilator_cc_binary,
@@ -566,9 +562,10 @@ verilator_cc_binary = rule(
             doc = "The name of the verilog module to verilate.",
             mandatory = True,
         ),
-        "trace": attr.bool(
-            doc = "Enable tracing for Verilator",
-            default = False,
+        "trace": attr.string(
+            doc = "Waveform format (`none`, `vcd`, or `fst`)",
+            default = "none",
+            values = ["none", "vcd", "fst"],
         ),
         "vopts": attr.string_list(
             doc = "Additional command line options to pass to Verilator",
@@ -704,14 +701,16 @@ def _verilator_run(ctx):
 
     # Waveform trace. Use plusargs mechanism to tell the simulation where write
     # the trace to
-    if ctx.attr.binary[VerilatedBinaryInfo].trace:
-        trace_file = ctx.actions.declare_file(ctx.label.name + ".vcd")
+    trace = ctx.attr.binary[VerilatedBinaryInfo].trace
+    if trace != "none":
+        trace_file = ctx.actions.declare_file(ctx.label.name + "." + trace)
         outputs.append(trace_file)
         args.append("+" + ctx.attr.trace_plusarg + "=" + trace_file.path)
 
-        result.append(WaveformInfo(
-            vcd_files = [trace_file],
-        ))
+        if trace == "fst":
+            result.append(WaveformInfo(fst_files = [trace_file]))
+        else:
+            result.append(WaveformInfo(vcd_files = [trace_file]))
 
     # Target runfiles
     runfiles = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()

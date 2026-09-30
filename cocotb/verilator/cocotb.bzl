@@ -26,18 +26,15 @@ def _wave_config(wave_format):
     return {
         "fst": struct(
             defines = ["VM_TRACE=1", "VM_TRACE_FST=1"],
-            trace = True,
-            trace_format = "fst",
+            trace = "fst",
         ),
         "none": struct(
             defines = ["VM_TRACE=0"],
-            trace = False,
-            trace_format = None,
+            trace = "none",
         ),
         "vcd": struct(
             defines = ["VM_TRACE=1"],
-            trace = True,
-            trace_format = "vcd",
+            trace = "vcd",
         ),
     }[wave_format]
 
@@ -154,7 +151,6 @@ def _build_cocotb_verilator_simulator(ctx):
         extra_deps = [cocotb_support],
         extra_runfiles = cocotb_libraries,
         trace = wave_config.trace,
-        trace_format = wave_config.trace_format,
         opts = ["--vpi", "--public-flat-rw"],
         user_vopts = user_vopts,
         prefix = "Vtop",

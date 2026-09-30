@@ -23,7 +23,7 @@ def sim_build(
         top = "tb",
         simulators = ["verilator"],
         name = None,
-        trace_vcd = False,
+        trace = "none",
         extra_verilator_args = [],
         extra_bazel_tags = [],
         coverage = _DEFAULT_COVERAGE):
@@ -34,7 +34,7 @@ def sim_build(
         top: name of the top module
         name: base name for generated simulation targets; defaults to the module name
         simulators: simulator (verilator)
-        trace_vcd: controls whether VCD tracing is enabled in the binary
+        trace: waveform format (`none`, `vcd`, or `fst`)
         extra_verilator_args: extra compilation options for Verilator
         extra_bazel_tags: extra tags to be placed for bazel target definition
         coverage: types of coverage to collect
@@ -46,6 +46,9 @@ def sim_build(
     if (name == None):
         name = module.name
 
+    if trace not in ["none", "vcd", "fst"]:
+        fail("Unsupported trace format '{}'; expected 'none', 'vcd', or 'fst'".format(trace))
+
     # Verilator
     if "verilator" in simulators:
         verilator_cc_binary(
@@ -56,7 +59,7 @@ def sim_build(
             coverage = coverage,
             module = module,
             module_top = top,
-            trace = trace_vcd,
+            trace = trace,
             visibility = [
                 "//visibility:public",
             ],
@@ -96,7 +99,6 @@ def sim_run(
         verilator_run(
             name = name + suffix + "_verilator_run",
             binary = name + "_verilator_bin",
-            trace_plusarg = "vcd",
             visibility = [
                 "//visibility:public",
             ],
@@ -118,7 +120,7 @@ def sim_genrules(
         top = "tb",
         simulators = ["verilator"],
         name = None,
-        trace_vcd = False,
+        trace = "none",
         extra_verilator_run_args = [],
         extra_verilator_binary_vopts = [],
         extra_bazel_tags = [],
@@ -130,7 +132,7 @@ def sim_genrules(
         top: name of the top module
         simulators: simulator (verilator)
         name: base name for generated simulation targets; defaults to the module name
-        trace_vcd: controls whether VCD traces should be generated
+        trace: waveform format (`none`, `vcd`, or `fst`)
         extra_verilator_run_args: extra runtime options for Verilator
         extra_verilator_binary_vopts: extra compilation options for Verilator
         extra_bazel_tags: extra tags to be placed for bazel target definition
@@ -149,7 +151,7 @@ def sim_genrules(
         top = top,
         simulators = simulators,
         name = name,
-        trace_vcd = trace_vcd,
+        trace = trace,
         extra_verilator_args = extra_verilator_binary_vopts,
         extra_bazel_tags = extra_bazel_tags,
         coverage = coverage,
@@ -166,10 +168,11 @@ def sim_genrules(
 
     # Generate export package target
     if "verilator" in simulators:
+        trace_vopts = [] if trace == "none" else ["--trace-" + trace]
         verilator_package(
             name = name + "_verilator_package",
             module_top = top,
             verilog_library = module,
             copts = ["-std=c++20"],
-            vopts = _VERILATOR_VOPTS + extra_verilator_binary_vopts,
+            vopts = _VERILATOR_VOPTS + trace_vopts + extra_verilator_binary_vopts,
         )
