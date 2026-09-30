@@ -40,13 +40,8 @@ _cocotb_test_icarus_attrs.update({
     ),
 })
 
-_cocotb_test_icarus_test = rule(
-    implementation = _cocotb_test_icarus_impl,
-    attrs = _cocotb_test_icarus_attrs,
-    toolchains = ["@rules_python//python:toolchain_type"],
-    test = True,
-)
-
-def cocotb_test_icarus(name, **kwargs):
-    """Create an Icarus-backed cocotb test."""
-    return _cocotb_test_icarus_test(name = name, **kwargs)
+cocotb_test_icarus_rulebase = {
+    "attrs": _cocotb_test_icarus_attrs,
+    "implementation": _cocotb_test_icarus_impl,
+    "toolchains": ["@rules_python//python:toolchain_type"],
+}

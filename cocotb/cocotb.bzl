@@ -14,11 +14,30 @@
 
 """Public cocotb test macro with simulator-specific dispatch."""
 
-load(":icarus/cocotb.bzl", "cocotb_test_icarus")
-load(":verilator/cocotb.bzl", "cocotb_test_verilator")
+load(":icarus/cocotb.bzl", "cocotb_test_icarus_rulebase")
+load(":verilator/cocotb.bzl", "cocotb_test_verilator_rulebase")
+
+_cocotb_test_icarus_binary = rule(executable = True, **cocotb_test_icarus_rulebase)
+_cocotb_test_icarus_test = rule(test = True, **cocotb_test_icarus_rulebase)
+_cocotb_test_verilator_binary = rule(executable = True, **cocotb_test_verilator_rulebase)
+_cocotb_test_verilator_test = rule(test = True, **cocotb_test_verilator_rulebase)
 
 def cocotb_test(name, sim = "icarus", **kwargs):
     """Create a cocotb test using the selected simulator implementation.
+
+    This creates two targets:
+      {name}: a regular test target intended to be invoked by `bazel test`
+      {name}.debug: an additional binary target intented to be invoked with `bazel run`
+
+    This additional binary target allows for interactive debugging inside the
+    cocotb test by e.g. using `breakpoint()` inside the code or setting the
+    COCOTB_PDB_ON_EXCEPTION=1 environment variable to be dropped into the debugger
+    on failed assertions and other exceptions.
+
+    Generally, bazel allows invoking test targets with `bazel run`, but due to
+    the bazel test wrapper that gets attached to every test rule, even when invoked
+    with `bazel run`, it's impossible to pass stdin to the executed binary, making
+    the debugger impossible to interact with in the regular test target.
 
     Args:
       name: Name of the test target.
@@ -29,9 +48,20 @@ def cocotb_test(name, sim = "icarus", **kwargs):
     Returns:
       The result of the simulator-specific cocotb test macro.
     """
-    if sim == "icarus":
-        return cocotb_test_icarus(name = name, **kwargs)
-    if sim == "verilator":
-        return cocotb_test_verilator(name = name, **kwargs)
 
-    fail("Unsupported cocotb simulator '{}'; expected 'icarus' or 'verilator'".format(sim))
+    kwargs_for_binary = {k: v for k, v in kwargs.items() if k not in [
+        "size",
+        "timeout",
+        "flaky",
+        "shard_count",
+        "local",
+    ]}
+
+    if sim == "icarus":
+        _cocotb_test_icarus_test(name = name, **kwargs)
+        _cocotb_test_icarus_binary(name = name + ".debug", **kwargs_for_binary)
+    elif sim == "verilator":
+        _cocotb_test_verilator_test(name = name, **kwargs)
+        _cocotb_test_verilator_binary(name = name + ".debug", **kwargs_for_binary)
+    else:
+        fail("Unsupported cocotb simulator '{}'; expected 'icarus' or 'verilator'".format(sim))

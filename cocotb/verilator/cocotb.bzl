@@ -218,18 +218,13 @@ _cocotb_test_verilator_attrs.update({
     ),
 })
 
-_cocotb_test_verilator_test = rule(
-    implementation = _cocotb_test_verilator_impl,
-    attrs = _cocotb_test_verilator_attrs,
-    toolchains = [
+cocotb_test_verilator_rulebase = {
+    "attrs": _cocotb_test_verilator_attrs,
+    "fragments": ["cpp"],
+    "implementation": _cocotb_test_verilator_impl,
+    "toolchains": [
         "@bazel_tools//tools/cpp:toolchain_type",
         "@rules_hdl//verilator:toolchain_type",
         "@rules_python//python:toolchain_type",
     ],
-    fragments = ["cpp"],
-    test = True,
-)
-
-def cocotb_test_verilator(name, **kwargs):
-    """Create a Verilator-backed cocotb test."""
-    return _cocotb_test_verilator_test(name = name, **kwargs)
+}
