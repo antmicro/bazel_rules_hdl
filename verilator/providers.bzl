@@ -18,7 +18,7 @@ VerilatedBinaryInfo = provider(
     doc = "A verilated binary supplementary info",
     fields = {
         "coverage": "Coverage collection settings",
-        "trace": "Trace (waveform collection) enable",
+        "trace": "Trace waveform format (`none`, `vcd`, or `fst`)",
     },
 )
 
