@@ -4,6 +4,14 @@ module minimal_randomization;
     rand bit [7:0] data;
   endclass
 
+  initial begin : proc_waveform
+    string trace_file;
+    if ($value$plusargs("trace=%s", trace_file)) begin
+      $dumpfile(trace_file);
+      $dumpvars();
+    end
+  end
+
   initial begin
     P pkt;
     pkt = new();

@@ -142,7 +142,7 @@ verilator_cc_binary(
     coverage = "all",
     module = ":tb",
     module_top = "tb",
-    trace = True,
+    trace = "vcd",
     vopts = [
         "--timing",
     ],
@@ -188,7 +188,7 @@ verilator_cc_binary(
     coverage = "all",
     module = ":load_and_count_tb",
     module_top = "tb",
-    trace = True,
+    trace = "vcd",
     vopts = [
         "--timing",
     ],

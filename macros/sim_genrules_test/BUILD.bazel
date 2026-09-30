@@ -19,4 +19,5 @@ package(default_applicable_licenses = ["//:package_license"])
 sim_genrules(
     module = "//verilator/tests:minimal_randomization",
     top = "minimal_randomization",
+    trace = "vcd",
 )
