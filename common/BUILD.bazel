@@ -22,4 +22,5 @@ package(
 py_binary(
     name = "copy_tree",
     srcs = ["private/copy_tree.py"],
+    legacy_create_init = 0,
 )

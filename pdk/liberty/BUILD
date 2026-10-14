@@ -27,6 +27,7 @@ py_binary(
     srcs = [
         "combine_liberty.py",
     ],
+    legacy_create_init = 0,
     python_version = "PY3",
     srcs_version = "PY3",
     visibility = ["//visibility:public"],
@@ -51,6 +52,7 @@ py_test(
     srcs = [
         "liberty_utility_test.py",
     ],
+    legacy_create_init = 0,
     python_version = "PY3",
     deps = [
         ":liberty_utility",
@@ -69,6 +71,7 @@ py_test(
     srcs = [
         "cell_parser_test.py",
     ],
+    legacy_create_init = 0,
     python_version = "PY3",
     deps = [
         ":cell_parser",
