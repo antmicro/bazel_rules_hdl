@@ -23,6 +23,7 @@ package(
 py_binary(
     name = "report_status_to_github",
     srcs = ["report_status_to_github.py"],
+    legacy_create_init = 0,
     deps = [
         requirement("jwt"),
         requirement("requests"),

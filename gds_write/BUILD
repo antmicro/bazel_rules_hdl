@@ -27,6 +27,7 @@ py_binary(
     srcs = [
         "def2stream.py",
     ],
+    legacy_create_init = 0,
     python_version = "PY3",
     srcs_version = "PY3",
     visibility = ["//visibility:public"],

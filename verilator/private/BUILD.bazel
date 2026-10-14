@@ -10,5 +10,6 @@ cc_binary(
 py_binary(
     name = "verilator_run_wrapper",
     srcs = ["verilator_run_wrapper.py"],
+    legacy_create_init = 0,
     visibility = ["//visibility:public"],
 )
