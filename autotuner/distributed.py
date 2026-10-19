@@ -34,38 +34,15 @@
 ###############################################################################
 
 """
-This scripts handles sweeping and tuning of OpenROAD-flow-scripts parameters.
-Dependencies are documented in pip format at distributed-requirements.txt
-
-For both sweep and tune modes:
-    openroad_autotuner -h
-
-Note: the order of the parameters matter.
-Arguments --design, --platform and --config are always required and should
-precede the <mode>.
-
-AutoTuner:
-    openroad_autotuner tune -h
-    openroad_autotuner --design gcd --platform sky130hd \
-                           --config ../designs/sky130hd/gcd/autotuner.json \
-                           tune
-    Example:
-
-Parameter sweeping:
-    openroad_autotuner sweep -h
-    Example:
-    openroad_autotuner --design gcd --platform sky130hd \
-                       --config distributed-sweep-example.json \
-                       sweep
+Python wrapper around Ray to manage parameter tuning of the PnR flow from bazel_rules_hdl
 """
 
 import argparse
 import json
 import os
 import sys
+import shutil
 import random
-from itertools import product
-from uuid import uuid4 as uuid
 from collections import namedtuple
 from multiprocessing import cpu_count
 
@@ -81,32 +58,22 @@ from ray.tune.search.ax import AxSearch
 from ray.tune.search.basic_variant import BasicVariantGenerator
 from ray.tune.search.hyperopt import HyperOptSearch
 from ray.tune.search.optuna import OptunaSearch
-from ray.util.queue import Queue
 
 from ax.service.ax_client import AxClient
 
 from autotuner.utils import (
-    openroad,
-    consumer,
-    parse_config,
     read_config,
     read_metrics,
-    prepare_ray_server,
     calculate_score,
     ERROR_METRIC,
     CONSTRAINTS_SDC,
-    FASTROUTE_TCL,
 )
 from autotuner.tensorboard_logger import TensorBoardLogger
 
+from autotuner.bazel_flow import BazelFlow, validate_search_space
+
 # Name of the final metric
 METRIC = "metric"
-# Path to the FLOW_HOME directory
-ORFS_FLOW_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../../../flow")
-)
-# Path to the WORK_HOME directory
-WORK_HOME = None
 # Global variable for args
 args = None
 
@@ -120,25 +87,10 @@ class AutoTunerBase(tune.Trainable):
         """
         Setup current experiment step.
         """
-        # We create the following directory structure:
-        #      1/     2/         3/       4/           5/
-        # <repo>/<logs>/<platform>/<design>/<experiment/<cwd>
-        self.repo_dir = os.path.abspath(LOCAL_DIR + "/../" * 4)
-        self.parameters = parse_config(
-            config=config,
-            base_dir=self.repo_dir,
-            platform=args.platform,
-            sdc_original=SDC_ORIGINAL,
-            constraints_sdc=CONSTRAINTS_SDC,
-            fr_original=FR_ORIGINAL,
-            fastroute_tcl=FASTROUTE_TCL,
-            path=os.getcwd(),
-        )
+        self.params = dict(config)
         self.step_ = 0
-        self.variant = f"variant-{self.__class__.__name__}-{self.trial_id}-or"
-        # Do a valid config check here, since we still have the config in a
-        # dict vs. having to scan through the parameter string later
         self.is_valid_config = self._is_valid_config(config)
+        self.flow = make_flow(args.jobs)
 
     def step(self):
         """
@@ -153,26 +105,22 @@ class AutoTunerBase(tune.Trainable):
                 "num_drc": ERROR_METRIC,
                 "die_area": ERROR_METRIC,
             }
-        self._variant = f"{self.variant}-{self.step_}"
-        metrics_file = openroad(
-            args=args,
-            base_dir=self.repo_dir,
-            parameters=self.parameters,
-            flow_variant=self._variant,
-            install_path=INSTALL_PATH,
-        )
+        ## self.training_iteration is defined by Ray's Trainable
+        ## It follows the ongoing iteration counter
+        experiment_dir = os.path.join(RUN_DIR, self.trial_name, f"iteration{self.training_iteration}")
+        try:
+            result = self.flow.run_trial(self.params, experiment_dir=experiment_dir, stop_after_step=args.stop_after_step, synth_tcl=args.synth_tcl, synth_additional_args=args.synth_additional_args, save_logs=DEBUG)
+        except (RuntimeError, ValueError) as err:
+            print(f"[ERROR TUN-0100] {err}")
+            return {METRIC: ERROR_METRIC, "effective_clk_period": ERROR_METRIC,
+                    "num_drc": ERROR_METRIC, "die_area": ERROR_METRIC}
         self.step_ += 1
-        score, effective_clk_period, num_drc, die_area = self.evaluate(
-            read_metrics(metrics_file, args.stop_stage)
-        )
-        # Feed the score back to Tune.
-        # return must match 'metric' used in tune.run()
-        return {
-            METRIC: score,
-            "effective_clk_period": effective_clk_period,
-            "num_drc": num_drc,
-            "die_area": die_area,
-        }
+        if args.dry_run:
+            ## Fake metrics
+            return {METRIC: 1.0, "effective_clk_period": 0, "num_drc": 0, "die_area": 0}
+        metrics = read_metrics(result["reports"], stop_after_step=args.stop_after_step)
+        score, effective_clk_period, num_drc, die_area = self.evaluate(metrics)
+        return {METRIC: score, "effective_clk_period": effective_clk_period, "num_drc": num_drc, "die_area": die_area}
 
     def evaluate(self, metrics):
         """
@@ -208,6 +156,12 @@ class AutoTunerBase(tune.Trainable):
                 return False
         return True
 
+    # Checkpoint for PBT
+    def save_checkpoint(self, checkpoint_dir):
+        return {"step": self.step_}
+    
+    def load_checkpoint(self, checkpoint):
+        self.step_ = checkpoint["step"]
 
 class PPAImprov(AutoTunerBase):
     """
@@ -219,22 +173,31 @@ class PPAImprov(AutoTunerBase):
         """
         Compute PPA term for evaluate.
         """
-        coeff_perform, coeff_power, coeff_area = 10000, 100, 100
+        ## coeff_ppa comes as a string like (32,55,111)
+        if args.ppa_coeff is not None:
+            coeff_list = [int(x.strip()) for x in args.ppa_coeff.split(',')]
+            coeff_perform, coeff_power, coeff_area = coeff_list
+        else:
+            coeff_perform, coeff_power, coeff_area = 10000, 100, 100
 
         eff_clk_period = metrics["clk_period"]
-        if metrics["worst_slack"] < 0:
-            eff_clk_period -= metrics["worst_slack"]
+        # worst_slack is a positive value on failure, 0.0 if timing met
+        if metrics["worst_slack"] > 0:
+            eff_clk_period += metrics["worst_slack"]
 
-        eff_clk_period_ref = reference["clk_period"]
-        if reference["worst_slack"] < 0:
-            eff_clk_period_ref -= reference["worst_slack"]
+        eff_clk_period_ref = reference_metrics["clk_period"]
+        if reference_metrics["worst_slack"] > 0:
+            eff_clk_period_ref += reference_metrics["worst_slack"]
 
         def percent(x_1, x_2):
+            # Failsafe for divide by 0
+            if x_1 == 0:
+                return 100
             return (x_1 - x_2) / x_1 * 100
 
         performance = percent(eff_clk_period_ref, eff_clk_period)
-        power = percent(reference["total_power"], metrics["total_power"])
-        area = percent(100 - reference["final_util"], 100 - metrics["final_util"])
+        power = percent(reference_metrics["total_power"], metrics["total_power"])
+        area = percent(100 - reference_metrics["final_util"], 100 - metrics["final_util"])
 
         # Lower values of PPA are better.
         ppa_upper_bound = (coeff_perform + coeff_power + coeff_area) * 100
@@ -244,14 +207,14 @@ class PPAImprov(AutoTunerBase):
         return ppa_upper_bound - ppa
 
     def evaluate(self, metrics):
-        error = "ERR" in metrics.values() or "ERR" in reference.values()
-        not_found = "N/A" in metrics.values() or "N/A" in reference.values()
+        error = "ERR" in metrics.values() or "ERR" in reference_metrics.values()
+        not_found = "N/A" in metrics.values() or "N/A" in reference_metrics.values()
         if error or not_found:
             return (ERROR_METRIC, ERROR_METRIC, ERROR_METRIC, ERROR_METRIC)
         ppa = self.get_ppa(metrics)
         gamma = ppa / 10
         score = ppa * (self.step_ / 100) ** (-1) + (gamma * metrics["num_drc"])
-        effective_clk_period = metrics["clk_period"] - metrics["worst_slack"]
+        effective_clk_period = metrics["clk_period"] + metrics["worst_slack"]
         num_drc = metrics["num_drc"]
         return (score, effective_clk_period, num_drc, metrics["die_area"])
 
@@ -262,28 +225,55 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser()
 
-    subparsers = parser.add_subparsers(
-        help="mode of execution", dest="mode", required=True
-    )
-    tune_parser = subparsers.add_parser("tune")
-    _ = subparsers.add_parser("sweep")
-
     # DUT
     parser.add_argument(
-        "--design",
+        "--deps",
         type=str,
-        metavar="<gcd,jpeg,ibex,aes,...>",
+        metavar="<[:my_module]>",
         required=True,
-        help="Name of the design for Autotuning.",
+        action="append",
+        help="Verilog structure for bazel_rules_hdl.",
     )
     parser.add_argument(
-        "--platform",
+        "--cells",
         type=str,
-        metavar="<sky130hd,sky130hs,asap7,...>",
+        metavar="<@asap7//:pdk>",
         required=True,
-        help="Name of the platform for Autotuning.",
+        help="Tag to cell library",
+    )
+    parser.add_argument(
+        "--top",
+        type=str,
+        metavar="<top_wrapper>",
+        required=True,
+        help="Name of the RTL top-level",
+    )
+    parser.add_argument(
+        "--sdc",
+        type=str,
+        metavar="<sdc>",
+        required=True,
+        help="Timing constraints in SDC format",
+    )
+    parser.add_argument(
+        "--rules_hdl_repo",
+        type=str,
+        metavar="<@bazel_rules_hdl>",
+        default="@@",
+        help="Name of the bazel_rules_hdl. Switchable for testing purposes",
     )
 
+    parser.add_argument(
+        "--synth_tcl",
+        type=str,
+        help="Custom TCL script for synthesis",
+    )
+    parser.add_argument(
+        "--synth_additional_args",
+        type=json.loads,
+        default=None,
+        help="Extra arguments for synthesis in a JSON string",
+    )
     # Experiment Setup
     parser.add_argument(
         "--config",
@@ -293,91 +283,53 @@ def parse_arguments():
         help="Configuration file that sets which knobs to use for Autotuning.",
     )
     parser.add_argument(
-        "--experiment",
+        "--stop_after_step",
         type=str,
         metavar="<str>",
-        default="test",
-        help="Experiment name. This parameter is used to prefix the"
-        " FLOW_VARIANT and to set the Ray log destination.",
-    )
-    parser.add_argument(
-        "--timeout",
-        type=float,
-        metavar="<float>",
-        default=None,
-        help="Time limit (in hours) for each trial run. Default is no limit.",
-    )
-    parser.add_argument(
-        "--stop_stage",
-        type=str,
-        metavar="<str>",
-        choices=["floorplan", "place", "cts", "globalroute", "route", "finish"],
-        default="finish",
+        choices=["floorplan", "global_routing", "detailed_routing"],
+        default="detailed_routing",
         help="Name of the stage to stop after. Default is finish.",
     )
-    tune_parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="Resume previous run. Note that you must also set a unique experiment\
-                name identifier via `--experiment NAME` to be able to resume.",
-    )
-
     # ML
-    tune_parser.add_argument(
+    parser.add_argument(
         "--algorithm",
         type=str,
         choices=["hyperopt", "ax", "optuna", "pbt", "random"],
         default="hyperopt",
         help="Search algorithm to use for Autotuning.",
     )
-    tune_parser.add_argument(
-        "--eval",
-        type=str,
-        choices=["default", "ppa-improv"],
-        default="default",
-        help="Evaluate function to use with search algorithm.",
-    )
-    tune_parser.add_argument(
+    parser.add_argument(
         "--samples",
         type=int,
         metavar="<int>",
         default=10,
         help="Number of samples for tuning.",
     )
-    tune_parser.add_argument(
+    parser.add_argument(
         "--iterations",
         type=int,
         metavar="<int>",
         default=1,
         help="Number of iterations for tuning.",
     )
-    tune_parser.add_argument(
-        "--resources_per_trial",
-        type=float,
-        metavar="<float>",
-        default=1,
-        help="Number of CPUs to request for each tuning job.",
-    )
-    tune_parser.add_argument(
-        "--reference",
-        type=str,
-        metavar="<path>",
-        default=None,
-        help="Reference file for use with PPAImprov.",
-    )
-    tune_parser.add_argument(
+    parser.add_argument(
         "--perturbation",
         type=int,
         metavar="<int>",
         default=25,
         help="Perturbation interval for PopulationBasedTraining.",
     )
-    tune_parser.add_argument(
+    parser.add_argument(
         "--seed",
         type=int,
         metavar="<int>",
         default=42,
         help="Random seed. (0 means no seed.)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Generate bazel files but do not call the tools, mock the result instead.",
     )
 
     # Workload
@@ -389,20 +341,6 @@ def parse_arguments():
         help="Max number of concurrent jobs.",
     )
     parser.add_argument(
-        "--openroad_threads",
-        type=int,
-        metavar="<int>",
-        default=16,
-        help="Max number of threads openroad can use.",
-    )
-    parser.add_argument(
-        "--memory_limit",
-        type=float,
-        metavar="<float>",
-        default=None,
-        help="Maximum memory in GB that each trial job can use, process will be killed and not retried if it exceeds.",
-    )
-    parser.add_argument(
         "--server",
         type=str,
         metavar="<ip|servername>",
@@ -411,62 +349,39 @@ def parse_arguments():
     )
     parser.add_argument(
         "--port",
-        type=int,
+type=int,
         metavar="<int>",
         default=10001,
         help="The port of Ray server to connect.",
     )
     parser.add_argument(
-        "--work-dir",
+        "--run-dir",
         type=str,
         metavar="<path>",
         default=None,
-        help="Work directory for outputs (passed to ORFS as WORK_HOME).",
+        help="top level working directory",
     )
-
+    parser.add_argument(
+        "--ppa_coeff",
+        type=str,
+        default=None,
+        help="Override for PPA coefficient",
+    )
     parser.add_argument(
         "-v",
         "--verbose",
-        action="count",
-        default=0,
-        help="Verbosity level.\n\t0: only print Ray status\n\t1: also print"
-        " training stderr\n\t2: also print training stdout.",
+        action="store_true",
+        help="Verbosity level",
     )
 
     args = parser.parse_args()
-    if args.mode == "tune":
-        args.algorithm = args.algorithm.lower()
-        # Validation of arguments
-        if args.eval == "ppa-improv" and args.reference is None:
-            print(
-                '[ERROR TUN-0006] The argument "--eval ppa-improv"'
-                ' requires that "--reference <FILE>" is also given.'
-            )
-            sys.exit(7)
-
-        # Check for experiment name and resume flag.
-        if args.resume and args.experiment == "test":
-            print(
-                '[ERROR TUN-0031] The flag "--resume"'
-                ' requires that "--experiment NAME" is also given.'
-            )
-            sys.exit(1)
-
-    # If the experiment name is the default, add a UUID to the end.
-    if args.experiment == "test":
-        id = str(uuid())[:8]
-        args.experiment = f"{args.mode}-{id}"
-    else:
-        args.experiment += f"-{args.mode}"
-
-    if args.timeout is not None:
-        args.timeout = round(args.timeout * 3600)
+    args.algorithm = args.algorithm.lower()
 
     return args
 
 
 def set_algorithm(
-    algorithm_name, experiment_name, best_params, seed, perturbation, jobs, config
+    algorithm_name, experiment_name, reference_params, reference_result, seed, perturbation, jobs, config
 ):
     """
     Configure search algorithm.
@@ -484,9 +399,12 @@ def set_algorithm(
         np.random.seed(seed)
         random.seed(seed)
 
+    if algorithm_name != "pbt" and args.iterations != 1:
+        print("Warning: Only PBT supports iterations different than 1. Successive iterations will have no effect")
+
     if algorithm_name == "hyperopt":
         algorithm = HyperOptSearch(
-            points_to_evaluate=best_params,
+            points_to_evaluate=reference_params,
             random_state_seed=seed,
         )
     elif algorithm_name == "ax":
@@ -500,11 +418,13 @@ def set_algorithm(
             parameters=config,
             objectives={METRIC: AxClientMetric(minimize=True)},
         )
-        algorithm = AxSearch(ax_client=ax_client, points_to_evaluate=best_params)
+        algorithm = AxSearch(ax_client=ax_client, points_to_evaluate=reference_params)
     elif algorithm_name == "optuna":
-        algorithm = OptunaSearch(points_to_evaluate=best_params, seed=seed)
+        algorithm = OptunaSearch(points_to_evaluate=reference_params, evaluated_rewards=[reference_result], seed=seed)
     elif algorithm_name == "pbt":
         print("Warning: PBT does not support seed values. seed will be ignored.")
+        if perturbation > args.iterations:
+            print("Warning: perturbation is greater than iteration. PBT will have no effect !")
         algorithm = PopulationBasedTraining(
             time_attr="training_iteration",
             perturbation_interval=perturbation,
@@ -523,18 +443,25 @@ def set_algorithm(
 
     return algorithm
 
-
-def set_best_params(platform, design):
+def set_reference_params(config_file):
     """
-    Get current known best parameters if it exists.
+    Choose a set of parameters for the initial run.
+    Take the reference value if given,
+    or an arbitrary value in the set range otherwise
     """
-    params = []
-    best_param_file = f"designs/{platform}/{design}/autotuner-best.json"
-    if os.path.isfile(best_param_file):
-        with open(best_param_file) as file:
-            params = json.load(file)
-    return params
-
+    reference_parameters = {}
+    with open(config_file, 'r') as filehandler:
+        config = json.load(filehandler)
+    for param, val in config.items():
+        if "reference" in val:
+            reference_parameters[param] = val["reference"]
+        else:
+            # Arbitrary : take the minimum value of each parameter
+            if "minmax" in val:
+                reference_parameters[param] = val["minmax"][0]
+            elif "choices" in val:
+                reference_parameters[param] = val["choices"][0]
+    return reference_parameters
 
 def set_training_class(function):
     """
@@ -555,143 +482,161 @@ def save_best(results):
     best_config = results.best_config
     best_config["best_result"] = results.best_result[METRIC]
     trial_id = results.best_trial.trial_id
-    new_best_path = f"{LOCAL_DIR}/{args.experiment}/"
-    new_best_path += f"autotuner-best-{trial_id}.json"
+    new_best_path = os.path.join(RUN_DIR, "autotuner-best.json")
     with open(new_best_path, "w") as new_best_file:
         json.dump(best_config, new_best_file, indent=4)
     print(f"[INFO TUN-0003] Best parameters written to {new_best_path}")
 
+def make_flow(slots):
+    bazel="echo" if args.dry_run else None
+    return BazelFlow(
+        workspace_root=WORKSPACE_ROOT,
+        run_dir=RUN_DIR,
+        rules_hdl_repo=args.rules_hdl_repo,
+        bazel=bazel,
+        cells=args.cells, top=args.top, sdc=args.sdc, deps=args.deps, slots=slots)
 
-def sweep():
-    """Run sweep of parameters"""
-    if args.server is not None:
-        # For remote sweep we create the following directory structure:
-        #      1/     2/         3/       4/
-        # <repo>/<logs>/<platform>/<design>/
-        repo_dir = os.path.abspath(LOCAL_DIR + "/../" * 4)
-    else:
-        repo_dir = os.path.abspath(os.path.join(ORFS_FLOW_DIR, ".."))
-    print(f"[INFO TUN-0012] Log folder {LOCAL_DIR}.")
+MARKER = ".autotuner_run"
 
-    tb_log_dir = os.path.join(LOCAL_DIR, args.experiment)
-    print(
-        f"[INFO TUN-0034] TensorBoard logging enabled. Run: tensorboard --logdir={tb_log_dir}"
-    )
-
-    tb_logger = TensorBoardLogger.remote(log_dir=tb_log_dir)
-
-    queue = Queue()
-    parameter_list = list()
-    for name, content in config_dict.items():
-        if isinstance(content, dict) and content.get("type") == "string":
-            if "values" not in content:
-                print(
-                    f"[ERROR TUN-0016] {name} string parameter missing 'values' field."
-                )
-                sys.exit(1)
-            if not isinstance(content["values"], list) or len(content["values"]) == 0:
-                print(f"[ERROR TUN-0017] {name} 'values' must be a non-empty list.")
-                sys.exit(1)
-            parameter_list.append([{name: i} for i in content["values"]])
-        elif isinstance(content, list):
-            if content[-1] == 0:
-                print("[ERROR TUN-0014] Sweep does not support step value zero.")
-                sys.exit(1)
-            parameter_list.append([{name: i} for i in np.arange(*content)])
-        else:
-            print(f"[ERROR TUN-0015] {name} sweep is not supported.")
-            sys.exit(1)
-    parameter_list = list(product(*parameter_list))
-    for parameter in parameter_list:
-        temp = dict()
-        for value in parameter:
-            temp.update(value)
-        queue.put(
-            [
-                args,
-                repo_dir,
-                temp,
-                SDC_ORIGINAL,
-                FR_ORIGINAL,
-                INSTALL_PATH,
-                tb_logger,
-            ]
-        )
-    workers = [consumer.remote(queue) for _ in range(args.jobs)]
-    print("[INFO TUN-0009] Waiting for results.")
-    ray.get(workers)
-    ray.get(tb_logger.close.remote())
-    print(f"[INFO TUN-0035] TensorBoard events written to {tb_log_dir}")
-    print("[INFO TUN-0010] Sweep complete.")
-
+def reset_run_dir(run_dir):
+    marker = os.path.join(run_dir, MARKER)
+    if os.path.isdir(run_dir):
+        if os.listdir(run_dir) and not os.path.exists(marker):
+            sys.exit(f"[ERROR] {run_dir} was not created by the autotuner; "
+                     "refusing to delete it.")
+        shutil.rmtree(run_dir)
+    os.makedirs(run_dir)
+    open(marker, "w").close()
 
 def main():
-    global args, SDC_ORIGINAL, FR_ORIGINAL, LOCAL_DIR, INSTALL_PATH, ORFS_FLOW_DIR, WORK_HOME, config_dict, reference, best_params
+    global args, config_dict, reference_params, reference_metrics
+    global WORKSPACE_ROOT, RUN_DIR
+    global DEBUG
     args = parse_arguments()
+    DEBUG = args.verbose
 
-    # Set WORK_HOME from --work-dir argument
-    WORK_HOME = args.work_dir
-    if WORK_HOME:
-        print(f"[INFO TUN-0040] Work directory (WORK_HOME): {WORK_HOME}")
+    # WORKSPACE_ROOT is the root of the bazel project (containing MODULE.bazel) 
+    WORKSPACE_ROOT = os.environ["BUILD_WORKSPACE_DIRECTORY"]
+    if DEBUG:
+        print(f"WORKSPACE_ROOT: {WORKSPACE_ROOT}")
 
     # Read config and original files before handling where to run in case we
     # need to upload the files.
-    config_dict, SDC_ORIGINAL, FR_ORIGINAL = read_config(
-        os.path.abspath(args.config), args.mode, getattr(args, "algorithm", None)
+    config_dict = read_config(
+        os.path.abspath(args.config), getattr(args, "algorithm", None)
+    )
+    ## AX uses a list instead of a dict, thus bypass the check
+    if args.algorithm != "ax":
+        validate_search_space(config_dict)
+
+    # Connect to remote Ray server if any, otherwise will run locally
+    if args.server is not None:
+        # Connect to ray server before first remote execution.
+        ray.init(f"ray://{args.server}:{args.port}")
+        print("[INFO TUN-0001] Connected to Ray server.")
+
+    # RUN_DIR is the the top-level directory containing ALL the trials of autotuner
+    RUN_DIR = os.path.normpath(args.run_dir)
+    args.experiment = os.path.basename(RUN_DIR) # Name from Ray
+    # Handle both absolute and relative path for RUN_DIR
+    if WORKSPACE_ROOT not in RUN_DIR:
+        RUN_DIR = os.path.join(WORKSPACE_ROOT,RUN_DIR)
+    if DEBUG:
+        print(f"RUN_DIR: {RUN_DIR}")
+    assert os.path.commonpath([RUN_DIR, WORKSPACE_ROOT]) == WORKSPACE_ROOT
+    # Clean old run dir if it exists to avoid mixing results
+    reset_run_dir(RUN_DIR)
+    reference_params = set_reference_params(os.path.abspath(args.config))
+    if DEBUG:
+        print(f"Reference run parameters:\n{reference_params}\n")
+    ## Regardless of settings, perform a reference run
+    ## This has 2 distincts purposes: have a single run to building all the tools with bazel
+    ## So these can be cached
+    ## And create a reference data point for all metrics so later runs can be improved upon
+    if DEBUG:
+        print("Starting reference run")
+    if args.dry_run:
+        reference_metrics = read_metrics(None, args.stop_after_step, fake=True)
+    else:
+        try:
+            reference_experiment = make_flow(slots=1).run_trial(
+                reference_params, experiment_dir=os.path.join(
+                RUN_DIR, "reference"), stop_after_step=args.stop_after_step, synth_tcl=args.synth_tcl, synth_additional_args=args.synth_additional_args, save_logs=DEBUG)
+            # Compute the score of the reference run
+            reference_metrics = read_metrics(reference_experiment["reports"], args.stop_after_step)
+        ## The reference run may fail, catch that error
+        except RuntimeError:
+            print("[WARNING]: reference run failed. Update the reference values in the autotuner config.")
+            reference_metrics = {
+                "clk_period": "ERR",
+                "worst_slack": "ERR",
+                "total_power": "ERR",
+                "final_util": "ERR",
+                "die_area": "ERR",
+                "num_drc": "ERR",
+            }
+    reference_result = calculate_score(reference_metrics)[0]
+    if DEBUG:
+        print(f"reference_metrics:\n{reference_metrics}\n")
+        print(f"Reference run result: {reference_result}")
+    # Cleanup reference_metrics so it can be used as reference even on failure
+    if "ERR" in reference_metrics.values() or "N/A" in reference_metrics.values():
+        reference_metrics = {
+            "clk_period": ERROR_METRIC,
+            "worst_slack": ERROR_METRIC,
+            "total_power": ERROR_METRIC,
+            "final_util": 0.1,
+            "die_area": ERROR_METRIC,
+            "num_drc": ERROR_METRIC,
+        }
+
+    search_algo = set_algorithm(
+        args.algorithm,
+        args.experiment,
+        [reference_params],
+        reference_result,
+        args.seed,
+        args.perturbation,
+        args.jobs,
+        config_dict,
     )
 
-    LOCAL_DIR, ORFS_FLOW_DIR, INSTALL_PATH = prepare_ray_server(args)
+    sample_names = {}
+    def sample_name(trial):
+        return sample_names.setdefault(trial.trial_id, f"sample{len(sample_names)}")
 
-    if args.mode == "tune":
-        best_params = set_best_params(args.platform, args.design)
-        search_algo = set_algorithm(
-            args.algorithm,
-            args.experiment,
-            best_params,
-            args.seed,
-            args.perturbation,
-            args.jobs,
-            config_dict,
-        )
-        TrainClass = set_training_class(args.eval)
-        # PPAImprov requires a reference file to compute training scores.
-        if args.eval == "ppa-improv":
-            reference = read_metrics(args.reference, args.stop_stage)
+    tune_args = dict(
+        name=args.experiment,
+        metric=METRIC,
+        mode="min",
+        num_samples=args.samples,
+        fail_fast=False,
+        storage_path=os.path.dirname(RUN_DIR),
+        stop={"training_iteration": args.iterations},
+        resources_per_trial={"cpu": os.cpu_count() / args.jobs},
+        log_to_file=["trail-out.log", "trail-err.log"],
+        trial_name_creator=sample_name,
+        trial_dirname_creator=sample_name,
+    )
+    if args.algorithm == "pbt":
+        os.environ["TUNE_MAX_PENDING_TRIALS_PG"] = str(args.jobs)
+        tune_args["scheduler"] = search_algo
+    else:
+        tune_args["search_alg"] = search_algo
+        tune_args["scheduler"] = AsyncHyperBandScheduler()
+    if args.algorithm != "ax":
+        tune_args["config"] = config_dict
+    TrainClass = PPAImprov
+    analysis = tune.run(TrainClass, **tune_args)
 
-        tune_args = dict(
-            name=args.experiment,
-            metric=METRIC,
-            mode="min",
-            num_samples=args.samples,
-            fail_fast=False,
-            storage_path=LOCAL_DIR,
-            resume=args.resume,
-            stop={"training_iteration": args.iterations},
-            resources_per_trial={"cpu": os.cpu_count() / args.jobs},
-            log_to_file=["trail-out.log", "trail-err.log"],
-            trial_name_creator=lambda x: f"variant-{x.trainable_name}-{x.trial_id}-ray",
-            trial_dirname_creator=lambda x: f"variant-{x.trainable_name}-{x.trial_id}-ray",
-        )
-        if args.algorithm == "pbt":
-            os.environ["TUNE_MAX_PENDING_TRIALS_PG"] = str(args.jobs)
-            tune_args["scheduler"] = search_algo
-        else:
-            tune_args["search_alg"] = search_algo
-            tune_args["scheduler"] = AsyncHyperBandScheduler()
-        if args.algorithm != "ax":
-            tune_args["config"] = config_dict
-        analysis = tune.run(TrainClass, **tune_args)
+    # if all runs have failed
+    if analysis.best_result[METRIC] == ERROR_METRIC:
+        print("[ERROR TUN-0016] No successful runs found.")
+        sys.exit(16)
 
-        task_id = save_best.remote(analysis)
-        _ = ray.get(task_id)
-        print(f"[INFO TUN-0002] Best parameters found: {analysis.best_config}")
-
-        # if all runs have failed
-        if analysis.best_result[METRIC] == ERROR_METRIC:
-            print("[ERROR TUN-0016] No successful runs found.")
-            sys.exit(16)
-    elif args.mode == "sweep":
-        sweep()
+    task_id = save_best.remote(analysis)
+    _ = ray.get(task_id)
+    print(f"[INFO TUN-0002] Best parameters found: {analysis.best_config}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,34 @@
+{
+    "place_and_route.placement_density": {
+        "type": "float",
+        "minmax": [
+            20.0,
+            50.0
+        ],
+        "reference": 40.0
+    },
+    "place_and_route.enable_improve_placement": {
+        "type": "bool",
+        "choices": [
+            false,
+            true
+        ],
+        "reference":true
+    },
+    "place_and_route.target_die_utilization_percentage": {
+        "type": "float",
+        "minmax": [
+            40.0,
+            60.0
+        ],
+        "reference": 40.0
+    },
+    "place_and_route.core_padding_microns": {
+        "type": "int",
+        "minmax": [
+            1,
+            10
+        ],
+        "reference": 5
+    }
+}
