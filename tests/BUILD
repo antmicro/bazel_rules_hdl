@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("//autotuner:build_defs.bzl", "run_autotuner_tune")
 load("//dependency_support/com_google_skywater_pdk:cells_info.bzl", "for_each_sky130_cells")
 load("//dependency_support/org_theopenroadproject_asap7_pdk_r1p7:cells_info.bzl", "for_each_asap7_cells")
 load("//flows:basic_asic.bzl", "basic_asic_flow")
@@ -43,6 +44,7 @@ BASIC_TESTS = [
         srcs = [
             test_name + ".v",
         ],
+        visibility = ["//visibility:public"],
     )
     for test_name in BASIC_TESTS
 ]
@@ -82,6 +84,7 @@ place_and_route(
 sdc_library(
     name = "constraint",
     srcs = ["constraint.sdc"],
+    visibility = ["//visibility:public"],
 )
 
 place_and_route(
@@ -226,5 +229,18 @@ sby_formal(
     ],
     deps = [
         ":verilog_counter_formal",
+    ],
+)
+
+run_autotuner_tune(
+    name = "counter-tune",
+    cells = "@org_theopenroadproject_asap7sc7p5t_27//:asap7-sc7p5t_rev27_rvt_4x-ccs_ss",
+    config = "counter_autotuner.json",
+    iterations = 1,
+    samples = 2,
+    top = "verilog_counter",
+    sdc = ":constraint",
+    deps = [
+        ":verilog_counter",
     ],
 )

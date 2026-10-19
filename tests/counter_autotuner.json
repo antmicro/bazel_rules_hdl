@@ -1,0 +1,10 @@
+{
+    "place_and_route.placement_density": {
+        "type": "int",
+        "minmax": [
+            20,
+            50
+        ],
+        "step": 1
+    }
+}
