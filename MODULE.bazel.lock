@@ -754,7 +754,7 @@
     "//dependency_support:pdks_extension.bzl%pdks_extension": {
       "general": {
         "bzlTransitiveDigest": "IYNM95SxbcS/QGaJxuosUOAqQfYYKM1YrDML5GeNXAk=",
-        "usagesDigest": "CtNaPn/RvB42cZ6dP5H70ghQH84mQrhpjgf+B10d3S8=",
+        "usagesDigest": "i6udY7/7ZKYcRWzU0GXU1Xv8y0u1Ev0JHgSIqkvMYJc=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -951,8 +951,8 @@
     },
     "//dependency_support:tools_extension.bzl%tools_extension": {
       "general": {
-        "bzlTransitiveDigest": "Si3YKx28cqEcmhwK2XZfePz3cJBD8uhIcaxFVupokHo=",
-        "usagesDigest": "BCmDjKKFtOW3UamOTW++CGybjQ/BsTDdNTTOAKkbZ7Y=",
+        "bzlTransitiveDigest": "AZaFIOYPaBY1h2f06U0jVnPKDEskyryrJVTLaqh3xSw=",
+        "usagesDigest": "TnmhsAKGZf2FaHrkoWh/1aJFisuQCa+1vHHGleYI96I=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -987,10 +987,10 @@
             "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
             "attributes": {
               "urls": [
-                "https://github.com/verilator/verilator/archive/v5.052.tar.gz"
+                "https://github.com/verilator/verilator/archive/01770671ed125677ff2c9580fa209e04bdc753d5.tar.gz"
               ],
-              "sha256": "8c8d2e11e6ad32f641dd250742a94195ddecb912e2e2dabe2f42ddbbb99c1092",
-              "strip_prefix": "verilator-5.052",
+              "sha256": "78d2d76095def8f5945b7ca3844f80fcca9c4a449acc2e1357395335557655c2",
+              "strip_prefix": "verilator-01770671ed125677ff2c9580fa209e04bdc753d5",
               "build_file": "@@//dependency_support/verilator:verilator.BUILD.bazel"
             }
           },
@@ -1577,7 +1577,7 @@
     "@@rules_7zip+//:extension_setup_7zip.bzl%extension_setup_7zip": {
       "general": {
         "bzlTransitiveDigest": "lQHO25Y262+9HO0EiqlPBqJnw+aW9pKbHgaBxJUBIWs=",
-        "usagesDigest": "co5bW+o3CM4O5O9TvGmnL2tzQgtbpsFQajrlPapgDS0=",
+        "usagesDigest": "F+WWRFonRLy0nj0GgRWj7e9ZGEY66zfS12CCNRA9/m0=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -2742,7 +2742,7 @@
     "@@toolchains_llvm+//toolchain/extensions:llvm.bzl%llvm": {
       "general": {
         "bzlTransitiveDigest": "i54NfnK6i34XT5yyh16sxeFE2U1s0aiixBtMQYMdAMo=",
-        "usagesDigest": "nN6VXvPOgHk3mSRQjUcoV26bN784fu7YAjcuGa6l4Jo=",
+        "usagesDigest": "3eHWSRmisgcWq21nI9tzQRcXjPM5rjiUAHd051g4EY0=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -4467,10 +4467,8 @@
           "click": {
             "https://files.pythonhosted.org/packages/59/87/84326af34517fca8c58418d148f2403df25303e02736832403587318e9e8/click-8.1.3.tar.gz": "sha256:7682dc8afb30297001674575ea00d1814d808d6a36af415a82bd481d37ba7b8e",
             "https://files.pythonhosted.org/packages/60/6c/8ca2efa64cf75a977a0d7fac081354553ebe483345c734fb6b6515d96bbc/click-8.2.1.tar.gz": "sha256:27c491cc05d968d271d5a1db13e3b5a184636d9d930f148c50b038f0d0646202",
-            "https://files.pythonhosted.org/packages/76/d4/81420972a676e8ffea40450d8c8c92943e7218a78fe9b64359836cc9876b/click-8.4.2.tar.gz": "sha256:9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6",
             "https://files.pythonhosted.org/packages/85/32/10bb5764d90a8eee674e9dc6f4db6a0ab47c8c4d0d83c27f7c39ac415a4d/click-8.2.1-py3-none-any.whl": "sha256:61a3265b914e850b85317d0b3109c7f8cd35a670f963866005d6ef1d5175a12b",
-            "https://files.pythonhosted.org/packages/c2/f1/df59e28c642d583f7dacffb1e0965d0e00b218e0186d7858ac5233dce840/click-8.1.3-py3-none-any.whl": "sha256:bb4d8133cb15a609f44e8213d9b391b0809795062913b383c62be0ee95b1db48",
-            "https://files.pythonhosted.org/packages/fb/e2/79c688af8b210d232694e31e59da9f6ec747bae31c3f5946e4e9b98860d5/click-8.4.2-py3-none-any.whl": "sha256:e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76"
+            "https://files.pythonhosted.org/packages/c2/f1/df59e28c642d583f7dacffb1e0965d0e00b218e0186d7858ac5233dce840/click-8.1.3-py3-none-any.whl": "sha256:bb4d8133cb15a609f44e8213d9b391b0809795062913b383c62be0ee95b1db48"
           },
           "cocotb": {
             "https://files.pythonhosted.org/packages/03/58/a6d6ffa981c79c7756e5562ebf34cd962c853b2c5280539a75fca4ffadb6/cocotb-2.1.0-cp314-cp314-macosx_11_0_arm64.whl": "sha256:a91e1ca46c8e34f28e746d4709ef2b8da93f0d54a9fc12586b02ea6aed720d33",
