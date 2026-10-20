@@ -18,12 +18,90 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
+load("@rules_cc//cc:action_names.bzl", "CPP_COMPILE_ACTION_NAME")
 load("@rules_cc//cc:defs.bzl", "CcInfo")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("//common:providers.bzl", "LogInfo", "WaveformInfo")
 load("//verilog:defs.bzl", "VerilogInfo")
 load("providers.bzl", "RawCoverageInfo", "VerilatedBinaryInfo")
 
+VERILATOR_PCH_SUFFIX = "__pch.h"
+PCH_GCC_FLAGS = [
+    "-fpch-deps",
+    "-Winvalid-pch",
+]
+
+# The functions generates a precompiled header from a given header
+# It returns the tupple with information required to properly use the precompiled header
+def _precompile_header(ctx, cc_toolchain, cc_feature_configuration, hdr_basename, hdr_dirname, compilation_contexts):
+    if cc_toolchain.compiler != "gcc":
+        # The function only supports precompilation using GCC
+        # Compilation of verilated files will be longer with other compilers
+        # Clang is unsupported because uses absolute paths in .d files which Bazel treats as escaping a sandbox
+
+        # buildifier: disable=print
+        print("Precompilation of Verilator outputs is only supported with GCC. Compilation can be slower due to usage of the following cc_toolchain: " + cc_toolchain.compiler)
+        return [], [], []
+
+    # Prepare generic compile action arguments
+    compiler_path = cc_common.get_tool_for_action(
+        feature_configuration = cc_feature_configuration,
+        action_name = CPP_COMPILE_ACTION_NAME,
+    )
+    compile_variables = cc_common.create_compile_variables(
+        feature_configuration = cc_feature_configuration,
+        cc_toolchain = cc_toolchain,
+        user_compile_flags = _VERILATOR_DEFAULT_COPTS + ctx.fragments.cpp.cxxopts + ctx.fragments.cpp.copts,
+    )
+    command_line = cc_common.get_memory_inefficient_command_line(
+        feature_configuration = cc_feature_configuration,
+        action_name = CPP_COMPILE_ACTION_NAME,
+        variables = compile_variables,
+    )
+    env = cc_common.get_environment_variables(
+        feature_configuration = cc_feature_configuration,
+        action_name = CPP_COMPILE_ACTION_NAME,
+        variables = compile_variables,
+    )
+
+    # Build arguments for complier
+    args = ctx.actions.args()
+    args.add_all(command_line)
+
+    # Collect args from compilation contexts
+    headers = []
+    for compilation_ctx in compilation_contexts:
+        headers.append(compilation_ctx.headers)
+
+        args.add_all(compilation_ctx.includes.to_list(), format_each = "-I%s")
+        args.add_all(compilation_ctx.quote_includes.to_list(), before_each = "-iquote")
+        args.add_all(compilation_ctx.system_includes.to_list(), before_each = "-isystem")
+        args.add_all(compilation_ctx.defines.to_list(), format_each = "-D%s")
+
+    # Unless -MD is specified while creating the precompiled file,
+    # the .d file of the precompiled header will not show files included during the precompilation
+    args.add("-MD")
+    precompiled_hdr_d = ctx.actions.declare_file(hdr_basename + ".gch.d")
+    args.add("-MF", precompiled_hdr_d.path)
+
+    # Configure precompiling header
+    args.add("-xc++-header")
+    args.add(hdr_dirname + "/" + hdr_basename)
+
+    precompiled_hdr = ctx.actions.declare_file(hdr_basename + ".gch")
+    args.add("-o", precompiled_hdr.path)
+
+    ctx.actions.run(
+        executable = compiler_path,
+        env = env,
+        arguments = [args],
+        mnemonic = "PrecompileHeader",
+        progress_message = "Pre-compiling header: " + hdr_basename,
+        inputs = depset(transitive = headers + [cc_toolchain.all_files]),
+        outputs = [precompiled_hdr, precompiled_hdr_d],
+    )
+
+    return [precompiled_hdr], [precompiled_hdr.dirname], PCH_GCC_FLAGS
 
 def _cc_configure_features(ctx, toolchain):
     return cc_common.configure_features(
@@ -74,15 +152,29 @@ def cc_compile(ctx, cc_toolchain, cc_feature_configuration, prefix, verilator_ou
         includes = depset([verilated_hpp.path]),
     ))
 
-    compilation_context, compilation_outputs = cc_common.compile(
+    # Verilator outputs headers in the way optimized for precompilation
+    # Most of generated Cpp files use a single header that includes almost all generated headers
+    # That single header is perfect for precompilation
+    # It speeds up compilation by skipping processing of included headers
+    precompiled_files, precompiled_includes, precompiled_flags = _precompile_header(
+        ctx,
+        cc_toolchain,
+        cc_feature_configuration,
+        hdr_basename = prefix + VERILATOR_PCH_SUFFIX,
+        hdr_dirname = verilated_hpp.path,
+        compilation_contexts = compilation_contexts,
+    )
+
+    return cc_common.compile(
         name = ctx.label.name,
         actions = ctx.actions,
         feature_configuration = cc_feature_configuration,
         cc_toolchain = cc_toolchain,
-        user_compile_flags = _VERILATOR_DEFAULT_COPTS + ctx.attr.copts,
+        user_compile_flags = _VERILATOR_DEFAULT_COPTS + precompiled_flags + ctx.attr.copts,
         srcs = extra_srcs + [verilated_cpp],
-        includes = includes,
+        includes = precompiled_includes + includes,
         defines = defines,
+        additional_inputs = precompiled_files,
         compilation_contexts = compilation_contexts,
     )
 
@@ -166,8 +258,8 @@ _HPP_SRC = ["h", "hh", "hpp"]
 _RUNFILES = ["dat", "mem"]
 
 def _only_cpp(f):
-    """Filter for just C++ source/headers"""
-    if f.extension in _CPP_SRC + _HPP_SRC:
+    """Filter for just C++ source"""
+    if f.extension in _CPP_SRC:
         return f.path
     return None
 
