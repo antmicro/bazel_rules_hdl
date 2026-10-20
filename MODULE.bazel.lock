@@ -938,8 +938,8 @@
     },
     "//dependency_support:tools_extension.bzl%tools_extension": {
       "general": {
-        "bzlTransitiveDigest": "h/4tbN8+IhQ01ZarUSaLcqyByODMfm+gAHmDN3s2FJE=",
-        "usagesDigest": "BCmDjKKFtOW3UamOTW++CGybjQ/BsTDdNTTOAKkbZ7Y=",
+        "bzlTransitiveDigest": "6pvjxO/HP6hoP5HUfgD/l22tiObapQtU4l8o8jmOTE4=",
+        "usagesDigest": "TnmhsAKGZf2FaHrkoWh/1aJFisuQCa+1vHHGleYI96I=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -977,10 +977,10 @@
             "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
             "attributes": {
               "urls": [
-                "https://github.com/verilator/verilator/archive/v5.052.tar.gz"
+                "https://github.com/verilator/verilator/archive/01770671ed125677ff2c9580fa209e04bdc753d5.tar.gz"
               ],
-              "sha256": "8c8d2e11e6ad32f641dd250742a94195ddecb912e2e2dabe2f42ddbbb99c1092",
-              "strip_prefix": "verilator-5.052",
+              "sha256": "78d2d76095def8f5945b7ca3844f80fcca9c4a449acc2e1357395335557655c2",
+              "strip_prefix": "verilator-01770671ed125677ff2c9580fa209e04bdc753d5",
               "build_file": "@@//dependency_support/verilator:verilator.BUILD.bazel"
             }
           },
@@ -3117,7 +3117,7 @@
     "@@toolchains_llvm+//toolchain/extensions:llvm.bzl%llvm": {
       "general": {
         "bzlTransitiveDigest": "i54NfnK6i34XT5yyh16sxeFE2U1s0aiixBtMQYMdAMo=",
-        "usagesDigest": "nN6VXvPOgHk3mSRQjUcoV26bN784fu7YAjcuGa6l4Jo=",
+        "usagesDigest": "3eHWSRmisgcWq21nI9tzQRcXjPM5rjiUAHd051g4EY0=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
