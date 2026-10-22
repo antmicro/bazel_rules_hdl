@@ -30,6 +30,7 @@ OpenRoadInfo = provider(
         "general_routing_area_results",
         "benchmark_report",
         "logs",
+        "report_json",
     ],
 )
 
@@ -179,6 +180,7 @@ def merge_open_road_info(left, right):
         verilog_based_area_results = verilog_based_area_results,
         general_routing_power_results = general_routing_power_results,
         general_routing_area_results = general_routing_area_results,
+        report_json = depset([], transitive = [left.report_json, right.report_json]),
     )
 
 def openroad_command(ctx, commands, input_db = None, step_name = None, inputs = [], outputs = [], execution_requirements = {}):
@@ -254,9 +256,14 @@ def openroad_command(ctx, commands, input_db = None, step_name = None, inputs = 
             output_db.basename[:-(len(output_db.extension) + 1)],
         ),
     )
+    metrics_file = ctx.actions.declare_file(
+        "{}.metrics.json".format(
+            output_db.basename[:-(len(output_db.extension) + 1)],
+        ),
+    )
 
     ctx.actions.run(
-        outputs = [output_db, log_file] + outputs,
+        outputs = [output_db, log_file, metrics_file] + outputs,
         inputs = inputs + [command_file] + input_db_dependency,
         arguments = [
             "-no_init",
@@ -266,6 +273,8 @@ def openroad_command(ctx, commands, input_db = None, step_name = None, inputs = 
             "-exit",
             "-log",
             log_file.path,
+            "-metrics",
+            metrics_file.path,
             command_file.path,
         ],
         executable = ctx.executable._openroad,

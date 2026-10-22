@@ -53,6 +53,7 @@ def export_def(ctx, open_road_info, suffix):
         input_files = depset(inputs),
         output_db = command_output.db,
         logs = depset([command_output.log_file]),
+        report_json = depset(),
     )
 
     return merge_open_road_info(open_road_info, def_open_road_info), output_def

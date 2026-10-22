@@ -17,9 +17,18 @@
 load("//synthesis:defs.bzl", "SynthesisInfo")
 
 def generate_power_results(ctx, output_file):
+    """
+    Call the report_power command and write its results into a file, either in text or json format
+
+    Args:
+      ctx: rule context
+      output_file: generated file with the results
+
+    Returns:
+        List of openroad commands
+    """
     netlist_target = ctx.attr.synthesized_rtl
     liberty = netlist_target[SynthesisInfo].standard_cell_info.default_corner.liberty
-
     return [
         "report_power",
         "set power_result [sta::design_power [lindex [sta::get_scenes] 0]]",
