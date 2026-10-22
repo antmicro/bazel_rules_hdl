@@ -17,6 +17,7 @@
 load("//pdk:open_road_configuration.bzl", "get_open_road_configuration")
 load("//place_and_route:open_road.bzl", "OpenRoadInfo", "merge_open_road_info", "openroad_command")
 load("//place_and_route:private/report_area.bzl", "generate_area_results")
+load("//place_and_route:private/report_json.bzl", "report_area_json", "report_power_json", "report_units_json")
 load("//place_and_route:private/report_power.bzl", "generate_power_results")
 load("//synthesis:defs.bzl", "SynthesisInfo")
 
@@ -46,6 +47,7 @@ def global_routing(ctx, open_road_info):
 
     general_routing_power_results = ctx.actions.declare_file("{}_general_routing_power_results.textproto".format(ctx.attr.name))
     general_routing_area_results = ctx.actions.declare_file("{}_general_routing_area_results.textproto".format(ctx.attr.name))
+    report_json = ctx.actions.declare_file("{}_global_routing_report.json".format(ctx.attr.name))
 
     open_road_commands = [
         """
@@ -63,6 +65,7 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
         "global_route -congestion_iterations 100",
         "estimate_parasitics -global_routing",
         "report_checks -path_delay min_max -format full_clock_expanded -fields {input_pin slew capacitance} -digits 3",
+        "report_checks -path_delay min_max -format json -digits 4 > {}".format(report_json.path),
         "report_wns",
         "report_tns",
         "report_check_types -max_slew -max_capacitance -max_fanout -violators",
@@ -75,6 +78,23 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
     open_road_commands.extend(generate_power_results(ctx, general_routing_power_results))
     open_road_commands.extend(generate_area_results(general_routing_area_results))
 
+    # JSON reports
+    cmd = report_power_json("json_power") + report_area_json("json_area") + report_units_json("json_unit")
+    open_road_commands.extend([cmd])
+    json_report_cmd = """
+set fp [open "{report_json}" w]
+puts $fp "{{\\\"global_routing\\\": {{"
+puts $fp "  \\\"area\\\": {{\n$json_area"
+puts $fp "  }},"
+puts $fp "  \\\"power\\\": $json_power"
+puts $fp "}},"
+puts $fp "  \\\"units\\\": {{\\n$json_unit"
+puts $fp "}}"
+puts $fp "}}"
+close $fp
+""".format(report_json = report_json.path)
+    open_road_commands.extend([json_report_cmd])
+
     command_output = openroad_command(
         ctx,
         commands = open_road_commands,
@@ -83,6 +103,7 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
         outputs = [
             general_routing_power_results,
             general_routing_area_results,
+            report_json,
         ],
         step_name = "global_routing",
     )
@@ -94,6 +115,7 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
         logs = depset([command_output.log_file]),
         general_routing_power_results = general_routing_power_results,
         general_routing_area_results = general_routing_area_results,
+        report_json = depset([report_json]),
     )
 
     return merge_open_road_info(open_road_info, current_action_open_road_info)

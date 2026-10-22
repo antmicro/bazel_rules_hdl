@@ -16,6 +16,7 @@
 
 load("//pdk:open_road_configuration.bzl", "DetailedRoutingInfo", "get_open_road_configuration")
 load("//place_and_route:open_road.bzl", "OpenRoadInfo", "merge_open_road_info", "openroad_command")
+load("//place_and_route:private/report_json.bzl", "report_area_json", "report_power_json", "report_timing_json", "report_units_json")
 load("//synthesis:defs.bzl", "SynthesisInfo")
 
 def detailed_routing(ctx, open_road_info):
@@ -34,6 +35,8 @@ def detailed_routing(ctx, open_road_info):
 
     output_drc = ctx.actions.declare_file("{}_output_drc".format(ctx.attr.name))
     routed_def = ctx.actions.declare_file("{}_detail_routed.def".format(ctx.attr.name))
+    report_json = ctx.actions.declare_file("{}_detailed_routing_report.json".format(ctx.attr.name))
+    report_checks = ctx.actions.declare_file("{}_detailed_routing_checks.json".format(ctx.attr.name))
 
     open_road_configuration = get_open_road_configuration(ctx.attr.synthesized_rtl[SynthesisInfo])
 
@@ -78,6 +81,7 @@ def detailed_routing(ctx, open_road_info):
 
     open_road_commands.append("puts \"report_checks -path_delay min_max -format full_clock_expanded -fields \\\"input_pin slew capacitance\\\" -digits 3\"")
     open_road_commands.append("report_checks -path_delay min_max -format full_clock_expanded -fields \"input_pin slew capacitance\" -digits 3")
+    open_road_commands.append("report_checks -path_delay min_max -format json -digits 4 > {}".format(report_checks.path))
 
     open_road_commands.append("puts \"report_wns\"")
     open_road_commands.append("report_wns")
@@ -95,6 +99,51 @@ def detailed_routing(ctx, open_road_info):
     open_road_commands.append("report_units")
     open_road_commands.append("write_def {}".format(routed_def.path))
 
+    ## DRC count, placeholder until better is found
+    drc_count_cmd = """
+set fp [open "{}" r]
+set drc_count 0
+while {{[gets $fp line] >= 0}} {{ incr drc_count }}
+close $fp
+""".format(output_drc.path)
+    open_road_commands.append(drc_count_cmd)
+
+    # Timing reports
+    timing_report_cmd = report_timing_json("json_timing")
+    open_road_commands.append(timing_report_cmd)
+
+    # Area report
+    area_report_cmd = report_area_json("json_area")
+    open_road_commands.append(area_report_cmd)
+
+    # Power report
+    power_report_cmd = report_power_json("json_power")
+    open_road_commands.append(power_report_cmd)
+
+    # Units
+    unit_cmd = report_units_json("json_unit")
+    open_road_commands.append(unit_cmd)
+
+    # Combine results
+    json_report_cmd = """
+set fp [open "{report_json}" w]
+puts $fp "{{\\\"detailed_routing\\\": {{"
+puts $fp "  \\\"drc\\\": {{"
+puts $fp "    \\\"count\\\": $drc_count"
+puts $fp "  }},"
+puts $fp "  \\\"area\\\": {{\n$json_area"
+puts $fp "  }},"
+puts $fp "  \\\"power\\\": $json_power,"
+puts $fp "  \\\"timing\\\": {{\n$json_timing"
+puts $fp "  }}"
+puts $fp "}},"
+puts $fp "  \\\"units\\\": {{\\n$json_unit"
+puts $fp "}}"
+puts $fp "}}"
+close $fp
+""".format(report_json = report_json.path)
+    open_road_commands.append(json_report_cmd)
+
     execution_requirements = {}
     if ctx.attr.local_detailed_routing_execution:
         execution_requirements["no-remote-exec"] = ""
@@ -107,6 +156,8 @@ def detailed_routing(ctx, open_road_info):
         outputs = [
             routed_def,
             output_drc,
+            report_checks,
+            report_json,
         ],
         execution_requirements = execution_requirements,
         step_name = "detailed_routing",
@@ -116,8 +167,9 @@ def detailed_routing(ctx, open_road_info):
         commands = open_road_commands,
         input_files = depset(inputs),
         output_db = command_output.db,
-        logs = depset([command_output.log_file]),
+        logs = depset([command_output.log_file, output_drc]),
         routed_def = routed_def,
+        report_json = depset([report_json]),
     )
 
     return merge_open_road_info(open_road_info, current_action_open_road_info)

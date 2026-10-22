@@ -36,6 +36,8 @@ def clock_tree_synthesis(ctx, open_road_info):
 
     inputs = placement_padding_struct.inputs
 
+    report_json = ctx.actions.declare_file("{}_cts_report.json".format(ctx.attr.name))
+
     open_road_commands = [
         format_openroad_do_not_use_list(open_road_configuration.do_not_use_cell_list),
         "estimate_parasitics -placement",
@@ -53,6 +55,7 @@ def clock_tree_synthesis(ctx, open_road_info):
         "detailed_placement",
         "repair_timing -repair_tns 100",
         "report_checks -path_delay min_max -format full_clock_expanded -fields {input_pin slew capacitance} -digits 3",
+        "report_cts -out_file {}".format(report_json.path),
         "detailed_placement",
         "filler_placement \"{filler_cells}\"".format(
             filler_cells = " ".join(open_road_configuration.fill_cells),
@@ -60,6 +63,31 @@ def clock_tree_synthesis(ctx, open_road_info):
     ]
     if open_road_configuration.check_placement:
         open_road_commands.append("check_placement")
+
+    cts_report_cmd = """
+report_cts -out_file {report_cts_file}
+set fp [open {report_cts_file} r]
+set lines [split [read $fp] "\\n"]
+close $fp
+""".format(report_cts_file = report_json.path)
+    cts_report_cmd += """
+set clock_roots [string trim [lindex [regexp -inline -all -- {\\S+} [lindex $lines 0]] end] "\\."]
+set buffers_inserted [string trim [lindex [regexp -inline -all -- {\\S+} [lindex $lines 1]] end] "\\."]
+set clock_subnets [string trim [lindex [regexp -inline -all -- {\\S+} [lindex $lines 2]] end] "\\."]
+set sinks [string trim [lindex [regexp -inline -all -- {\\S+} [lindex $lines 3]] end] "\\."]
+set cts "        \\\"clock_roots\\\": $clock_roots,\\n"
+append cts "        \\\"buffers_inserted\\\": $buffers_inserted,\\n"
+append cts "        \\\"clock_subnets\\\": $clock_subnets,\\n"
+append cts "        \\\"sinks\\\": $sinks\\n"
+"""
+    open_road_commands.append(cts_report_cmd)
+
+    json_report_cmd = """
+set fp [open "{report_json}" w]
+puts $fp "{{\\\"cts\\\": {{\\n$cts\\n}}\\n}}"
+close $fp
+""".format(report_json = report_json.path)
+    open_road_commands.append(json_report_cmd)
 
     execution_requirements = {}
     if ctx.attr.local_clock_tree_synthesis_execution:
@@ -70,6 +98,9 @@ def clock_tree_synthesis(ctx, open_road_info):
         commands = open_road_commands,
         input_db = open_road_info.output_db,
         inputs = inputs,
+        outputs = [
+            report_json,
+        ],
         execution_requirements = execution_requirements,
         step_name = "clock_tree_synthesis",
     )
@@ -79,6 +110,7 @@ def clock_tree_synthesis(ctx, open_road_info):
         input_files = depset(inputs),
         output_db = command_output.db,
         logs = depset([command_output.log_file]),
+        report_json = depset([report_json]),
     )
 
     return merge_open_road_info(open_road_info, current_action_open_road_info)

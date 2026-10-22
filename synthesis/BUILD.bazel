@@ -17,6 +17,7 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_pkg//:pkg.bzl", "pkg_tar")
 load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_python//python:defs.bzl", "py_binary")
 load("@rules_python//python:proto.bzl", "py_proto_library")
 
 package(
@@ -63,3 +64,9 @@ cc_proto_library(
     name = "power_performance_area_cc_proto",
     deps = [":power_performance_area_proto"],
 )  # buildifier: disable=native-cc-proto
+
+py_binary(
+    name = "postprocess_json",
+    srcs = ["postprocess_json.py"],
+    main = "postprocess_json.py",
+)

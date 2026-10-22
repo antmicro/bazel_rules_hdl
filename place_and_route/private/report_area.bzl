@@ -21,7 +21,11 @@ def generate_area_results(output_file):
 
     Args:
         output_file: The output textproto.
+
+    Returns:
+        List of openroad commands
     """
+
     return [
         "report_design_area",
         "set design_area [sta::format_area [rsz::design_area] 0]",

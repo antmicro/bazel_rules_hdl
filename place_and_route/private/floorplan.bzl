@@ -17,6 +17,7 @@
 load("//pdk:open_road_configuration.bzl", "get_open_road_configuration")
 load("//place_and_route:open_road.bzl", "OpenRoadInfo", "openroad_command", "timing_setup_commands")
 load("//place_and_route:private/report_area.bzl", "generate_area_results")
+load("//place_and_route:private/report_json.bzl", "report_area_json", "report_power_json", "report_units_json")
 load("//place_and_route:private/report_power.bzl", "generate_power_results")
 load("//synthesis:defs.bzl", "SynthesisInfo")
 
@@ -69,7 +70,9 @@ def init_floor_plan(ctx):
     tech_lef = netlist_target[SynthesisInfo].standard_cell_info.tech_lef
     std_cell_lef = netlist_target[SynthesisInfo].standard_cell_info.cell_lef_definitions
     verilog_based_power_results = ctx.actions.declare_file("{}_verilog_based_power_results.textproto".format(ctx.attr.name))
+    report_json = ctx.actions.declare_file("{}_floorplan_report.json".format(ctx.attr.name))
     verilog_based_area_results = ctx.actions.declare_file("{}_verilog_based_area_results.textproto".format(ctx.attr.name))
+
     tieoneport = open_road_configuration.tie_high_port
     tiezeroport = open_road_configuration.tie_low_port
 
@@ -111,6 +114,23 @@ def init_floor_plan(ctx):
     open_road_commands.extend(generate_power_results(ctx, verilog_based_power_results))
     open_road_commands.extend(generate_area_results(verilog_based_area_results))
 
+    # JSON reports
+    cmd = report_power_json("json_power") + report_area_json("json_area") + report_units_json("$json_unit")
+    open_road_commands.extend([cmd])
+    json_report_cmd = """
+set fp [open "{report_json}" w]
+puts $fp "{{\\\"floorplan\\\": {{"
+puts $fp "  \\\"area\\\": {{\n$json_area"
+puts $fp "  }},"
+puts $fp "  \\\"power\\\": $json_power"
+puts $fp "}},"
+puts $fp "  \\\"units\\\": {{\\n$json_unit"
+puts $fp "}}"
+puts $fp "}}"
+close $fp
+""".format(report_json = report_json.path)
+    open_road_commands.extend([json_report_cmd])
+
     input_open_road_files.extend([
         netlist,
         liberty,
@@ -127,6 +147,7 @@ def init_floor_plan(ctx):
         step_name = "floorplan",
         outputs = [
             verilog_based_power_results,
+            report_json,
             verilog_based_area_results,
         ],
     )
@@ -138,4 +159,5 @@ def init_floor_plan(ctx):
         input_files = depset(direct = input_open_road_files),
         verilog_based_power_results = verilog_based_power_results,
         verilog_based_area_results = verilog_based_area_results,
+        report_json = depset([report_json]),
     )

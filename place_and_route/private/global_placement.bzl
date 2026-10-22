@@ -52,6 +52,7 @@ def global_placement(ctx, open_road_info):
         input_files = depset(),
         output_db = command_output.db,
         logs = depset([command_output.log_file]),
+        report_json = depset(),
     )
 
     return merge_open_road_info(open_road_info, global_place_open_road_info)
