@@ -46,6 +46,8 @@ def global_routing(ctx, open_road_info):
 
     general_routing_power_results = ctx.actions.declare_file("{}_general_routing_power_results.textproto".format(ctx.attr.name))
     general_routing_area_results = ctx.actions.declare_file("{}_general_routing_area_results.textproto".format(ctx.attr.name))
+    general_routing_power_results_json = ctx.actions.declare_file("{}_general_routing_power_report.json".format(ctx.attr.name))
+    report_json = ctx.actions.declare_file("{}_global_routing_report.json".format(ctx.attr.name))
 
     open_road_commands = [
         """
@@ -63,6 +65,7 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
         "global_route -congestion_iterations 100",
         "estimate_parasitics -global_routing",
         "report_checks -path_delay min_max -format full_clock_expanded -fields {input_pin slew capacitance} -digits 3",
+        "report_checks -path_delay min_max -format json -digits 4 > {}".format(report_json.path),
         "report_wns",
         "report_tns",
         "report_check_types -max_slew -max_capacitance -max_fanout -violators",
@@ -74,6 +77,7 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
 
     open_road_commands.extend(generate_power_results(ctx, general_routing_power_results))
     open_road_commands.extend(generate_area_results(general_routing_area_results))
+    open_road_commands.extend(generate_power_results(ctx, general_routing_power_results_json, json = True))
 
     command_output = openroad_command(
         ctx,
@@ -83,6 +87,8 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
         outputs = [
             general_routing_power_results,
             general_routing_area_results,
+            general_routing_power_results_json,
+            report_json,
         ],
         step_name = "global_routing",
     )
@@ -94,6 +100,7 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
         logs = depset([command_output.log_file]),
         general_routing_power_results = general_routing_power_results,
         general_routing_area_results = general_routing_area_results,
+        report_json = depset([report_json, general_routing_power_results_json]),
     )
 
     return merge_open_road_info(open_road_info, current_action_open_road_info)

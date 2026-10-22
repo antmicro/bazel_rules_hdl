@@ -117,6 +117,8 @@ def _synthesize_design_impl(ctx):
 
     log_file = ctx.actions.declare_file("{}_yosys_output.log".format(ctx.attr.name))
 
+    report_json = ctx.actions.declare_file("{}_synthesis_report.json".format(ctx.attr.name))
+
     constr = ctx.actions.declare_file("{}_abc_constraints.constr".format(ctx.attr.name))
     constr_contents = ""
     default_driver_cell = getattr(ctx.attr.standard_cells[StandardCellInfo], "default_input_driver_cell", "")
@@ -161,6 +163,7 @@ def _synthesize_design_impl(ctx):
         "LIBERTY": default_liberty_file,
         "OUTPUT": output_file,
         "STANDARD_CELL_BLACK_BOX": standard_cell_black_box,
+        "STATS_JSON": report_json,
         "SYNTH_ADDITIONAL_ARGS": ctx.attr.synth_additional_args,
         "TOP": ctx.attr.top_module,
         "UHDM_FLIST": uhdm_flist,
@@ -210,7 +213,7 @@ def _synthesize_design_impl(ctx):
             env[k] = v
 
     ctx.actions.run(
-        outputs = [output_file, log_file, standard_cell_black_box],
+        outputs = [output_file, log_file, report_json, standard_cell_black_box],
         inputs = inputs,
         arguments = [args],
         executable = ctx.executable.yosys_tool,
@@ -222,8 +225,8 @@ def _synthesize_design_impl(ctx):
 
     return [
         DefaultInfo(
-            runfiles = ctx.runfiles(files = [output_file, log_file, benchmark_file]),
-            files = depset([output_file, log_file, benchmark_file]),
+            runfiles = ctx.runfiles(files = [output_file, log_file, benchmark_file, report_json]),
+            files = depset([output_file, log_file, benchmark_file, report_json]),
         ),
         SynthesisInfo(
             standard_cell_info = ctx.attr.standard_cells[StandardCellInfo],

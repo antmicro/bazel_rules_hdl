@@ -36,6 +36,9 @@ def clock_tree_synthesis(ctx, open_road_info):
 
     inputs = placement_padding_struct.inputs
 
+    ## FIXME: report_cts does not have a JSON output format
+    report_json = ctx.actions.declare_file("{}_cts_report.txt".format(ctx.attr.name))
+
     open_road_commands = [
         format_openroad_do_not_use_list(open_road_configuration.do_not_use_cell_list),
         "estimate_parasitics -placement",
@@ -53,6 +56,7 @@ def clock_tree_synthesis(ctx, open_road_info):
         "detailed_placement",
         "repair_timing -repair_tns 100",
         "report_checks -path_delay min_max -format full_clock_expanded -fields {input_pin slew capacitance} -digits 3",
+        "report_cts -out_file {}".format(report_json.path),
         "detailed_placement",
         "filler_placement \"{filler_cells}\"".format(
             filler_cells = " ".join(open_road_configuration.fill_cells),
@@ -70,6 +74,9 @@ def clock_tree_synthesis(ctx, open_road_info):
         commands = open_road_commands,
         input_db = open_road_info.output_db,
         inputs = inputs,
+        outputs = [
+            report_json,
+        ],
         execution_requirements = execution_requirements,
         step_name = "clock_tree_synthesis",
     )
@@ -79,6 +86,7 @@ def clock_tree_synthesis(ctx, open_road_info):
         input_files = depset(inputs),
         output_db = command_output.db,
         logs = depset([command_output.log_file]),
+        report_json = depset([report_json]),
     )
 
     return merge_open_road_info(open_road_info, current_action_open_road_info)

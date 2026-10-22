@@ -34,6 +34,7 @@ def detailed_routing(ctx, open_road_info):
 
     output_drc = ctx.actions.declare_file("{}_output_drc".format(ctx.attr.name))
     routed_def = ctx.actions.declare_file("{}_detail_routed.def".format(ctx.attr.name))
+    report_json = ctx.actions.declare_file("{}_detailed_routing_report.json".format(ctx.attr.name))
 
     open_road_configuration = get_open_road_configuration(ctx.attr.synthesized_rtl[SynthesisInfo])
 
@@ -78,6 +79,7 @@ def detailed_routing(ctx, open_road_info):
 
     open_road_commands.append("puts \"report_checks -path_delay min_max -format full_clock_expanded -fields \\\"input_pin slew capacitance\\\" -digits 3\"")
     open_road_commands.append("report_checks -path_delay min_max -format full_clock_expanded -fields \"input_pin slew capacitance\" -digits 3")
+    open_road_commands.append("report_checks -path_delay min_max -format json -digits 4 > {}".format(report_json.path))
 
     open_road_commands.append("puts \"report_wns\"")
     open_road_commands.append("report_wns")
@@ -107,6 +109,7 @@ def detailed_routing(ctx, open_road_info):
         outputs = [
             routed_def,
             output_drc,
+            report_json,
         ],
         execution_requirements = execution_requirements,
         step_name = "detailed_routing",
@@ -118,6 +121,7 @@ def detailed_routing(ctx, open_road_info):
         output_db = command_output.db,
         logs = depset([command_output.log_file]),
         routed_def = routed_def,
+        report_json = depset([report_json]),
     )
 
     return merge_open_road_info(open_road_info, current_action_open_road_info)

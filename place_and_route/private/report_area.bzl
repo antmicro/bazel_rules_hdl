@@ -14,13 +14,14 @@
 
 """Report Area Commands"""
 
-def generate_area_results(output_file):
+def generate_area_results(output_file, json = False):
     """Returns a list of openroad commands that will calculate the design area and write it to a text proto.
 
     Design area is defined as the sum of the area of all the instances/standard-cells in a design.
 
     Args:
         output_file: The output textproto.
+        json: Set to True to have the output being in JSON format, default to False thus text form.
     """
     return [
         "report_design_area",

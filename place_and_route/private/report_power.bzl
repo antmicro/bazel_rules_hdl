@@ -16,12 +16,24 @@
 
 load("//synthesis:defs.bzl", "SynthesisInfo")
 
-def generate_power_results(ctx, output_file):
+def generate_power_results(ctx, output_file, json = False):
+    """
+    Call the report_power command and write its results into a file, either in text or json format
+
+    Args:
+      ctx: rule context
+      output_file: generated file with the results
+      json: boolean. Text format by default, set to true to output in JSON format
+    """
     netlist_target = ctx.attr.synthesized_rtl
     liberty = netlist_target[SynthesisInfo].standard_cell_info.default_corner.liberty
+    if json:
+        cmd = "report_power -format json"
+    else:
+        cmd = "report_power"
 
     return [
-        "report_power",
+        cmd,
         "set power_result [sta::design_power [lindex [sta::get_scenes] 0]]",
         "set fp [open \"{output_file}\" w+]".format(
             output_file = output_file.path,

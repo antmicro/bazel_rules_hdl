@@ -58,6 +58,7 @@ def _place_and_route_impl(ctx):
 
     output_files.append(open_road_provider.output_db)
     output_files.extend(open_road_provider.logs.to_list())
+    output_files.extend(open_road_provider.report_json.to_list())
 
     if open_road_provider.benchmark_report != None:
         output_files.append(open_road_provider.benchmark_report)

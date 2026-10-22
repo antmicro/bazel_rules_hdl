@@ -30,6 +30,7 @@ OpenRoadInfo = provider(
         "general_routing_area_results",
         "benchmark_report",
         "logs",
+        "report_json",
     ],
 )
 
@@ -179,6 +180,7 @@ def merge_open_road_info(left, right):
         verilog_based_area_results = verilog_based_area_results,
         general_routing_power_results = general_routing_power_results,
         general_routing_area_results = general_routing_area_results,
+        report_json = depset([], transitive = [left.report_json, right.report_json]),
     )
 
 def openroad_command(ctx, commands, input_db = None, step_name = None, inputs = [], outputs = [], execution_requirements = {}):

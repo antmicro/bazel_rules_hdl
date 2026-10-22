@@ -69,7 +69,10 @@ def init_floor_plan(ctx):
     tech_lef = netlist_target[SynthesisInfo].standard_cell_info.tech_lef
     std_cell_lef = netlist_target[SynthesisInfo].standard_cell_info.cell_lef_definitions
     verilog_based_power_results = ctx.actions.declare_file("{}_verilog_based_power_results.textproto".format(ctx.attr.name))
+    verilog_based_power_results_json = ctx.actions.declare_file("{}_floorplan_power_report.json".format(ctx.attr.name))
     verilog_based_area_results = ctx.actions.declare_file("{}_verilog_based_area_results.textproto".format(ctx.attr.name))
+    ## FIXME: no area report in JSON format yet
+    verilog_based_area_results_json = ctx.actions.declare_file("{}_verilog_based_area_results.txt".format(ctx.attr.name))
     tieoneport = open_road_configuration.tie_high_port
     tiezeroport = open_road_configuration.tie_low_port
 
@@ -109,7 +112,9 @@ def init_floor_plan(ctx):
         ),
     ])
     open_road_commands.extend(generate_power_results(ctx, verilog_based_power_results))
+    open_road_commands.extend(generate_power_results(ctx, verilog_based_power_results_json, json = True))
     open_road_commands.extend(generate_area_results(verilog_based_area_results))
+    open_road_commands.extend(generate_area_results(verilog_based_area_results_json))
 
     input_open_road_files.extend([
         netlist,
@@ -127,7 +132,9 @@ def init_floor_plan(ctx):
         step_name = "floorplan",
         outputs = [
             verilog_based_power_results,
+            verilog_based_power_results_json,
             verilog_based_area_results,
+            verilog_based_area_results_json,
         ],
     )
 
@@ -138,4 +145,5 @@ def init_floor_plan(ctx):
         input_files = depset(direct = input_open_road_files),
         verilog_based_power_results = verilog_based_power_results,
         verilog_based_area_results = verilog_based_area_results,
+        report_json = depset([verilog_based_power_results_json, verilog_based_area_results_json]),
     )
