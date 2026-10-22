@@ -45,6 +45,10 @@ import time
 from multiprocessing import cpu_count
 from datetime import datetime
 
+import math
+from google.protobuf import text_format
+from synthesis import power_performance_area_pb2 as ppa_pb2
+
 import numpy as np
 import ray
 
@@ -395,64 +399,92 @@ def openroad(
 
     return metrics_file
 
+METRIC_KEYS = (
+    "clk_period",
+    "worst_slack",
+    "total_power",
+    "final_util",
+    "die_area",
+    "num_drc",
+)
 
-def read_metrics(file_name, stop_stage):
+def _require(message, *fields):
+    """Raises ValueError if a proto2 optional field is not set."""
+    for field in fields:
+        if not message.HasField(field):
+            raise ValueError(
+                f"{message.DESCRIPTOR.name}.{field} is not in the report")
+ 
+ 
+def read_metrics(metrics_file, stop_stage=None):
+    """Reads the <name>_report.textproto written by the place_and_route rule.
+ 
+    The file is a text-format hdl.ppa.PowerPerformanceAreaProto
+    (synthesis/power_performance_area.proto).
+ 
+    Returns a dict with the keys in METRIC_KEYS. If the file is missing or
+    cannot be trusted, every value is "ERR", which the evaluate functions
+    already turn into a failed trial.
+ 
+    stop_stage is unused; it is kept so existing callers do not change.
     """
-    Collects metrics to evaluate the user-defined objective function.
-
-    stop_stage indicates the last stage executed, so get most of the metrics
-    from that stage. The default stop stage is "finish". But if the run stops
-    before "finish", then no need to extract the metrics from the route stage,
-    so set them to 0
-    """
-    with open(file_name) as file:
-        data = json.load(file)
-    clk_period = 9999999
-    worst_slack = "ERR"
-    total_power = "ERR"
-    core_util = "ERR"
-    final_util = "ERR"
-    design_area = "ERR"
-    die_area = "ERR"
-    core_area = "ERR"
-    if stop_stage != "finish":
-        num_drc = wirelength = 0
+    try:
+        report = ppa_pb2.PowerPerformanceAreaProto()
+        with open(metrics_file) as report_file:
+            text_format.Parse(report_file.read(), report)
+ 
+        _require(report, "area", "performance", "power")
+        _require(report.area, "cell_area_um2", "cell_utilization_fraction")
+        _require(report.performance,
+                 "clock_period_ps", "critical_path_ps", "setup_wns_ps")
+        _require(report.power, "total")
+        _require(report.power.total, "total_watts")
+ 
+        area = report.area
+        perf = report.performance
+        values = (area.cell_area_um2, area.cell_utilization_fraction,
+                  perf.clock_period_ps, perf.critical_path_ps,
+                  report.power.total.total_watts)
+        if not all(math.isfinite(v) for v in values):
+            raise ValueError("non-finite value in report")
+ 
+        # The rule fills values it could not find with 0, so a zero area,
+        # utilization, clock period or critical path means "not found". A zero
+        # wns is a legitimate result.
+        if area.cell_area_um2 <= 0 or area.cell_utilization_fraction <= 0:
+            raise ValueError("no area in report")
+        if perf.clock_period_ps <= 0:
+            raise ValueError("no clock in report (is an sdc set?)")
+        if perf.critical_path_ps <= 0:
+            raise ValueError("no minimum clock period in report")
+    except (OSError, ValueError, text_format.ParseError) as err:
+        print(f"[ERROR TUN-0101] Cannot use metrics file {metrics_file}: {err}")
+        return {key: "ERR" for key in METRIC_KEYS}
+ 
+    # report_wns is clamped at 0 once timing is met, so clk_period - wns would
+    # equal the constraint for every passing design. Report the real negative
+    # wns when timing is violated and the headroom to the minimum period
+    # otherwise: clk_period - worst_slack is then the period actually achieved.
+    # (The proto states clock_period_ps - critical_path_ps ~= setup_wns_ps.)
+    if perf.setup_wns_ps < 0:
+        worst_slack = perf.setup_wns_ps
     else:
-        num_drc = wirelength = "ERR"
-    for stage_name, value in data.items():
-        if stage_name == "constraints" and len(value["clocks__details"]) > 0:
-            clk_period = float(value["clocks__details"][0].split()[1])
-        if stage_name == "floorplan" and "design__instance__utilization" in value:
-            core_util = value["design__instance__utilization"]
-        if stage_name == "detailedroute" and "route__drc_errors" in value:
-            num_drc = value["route__drc_errors"]
-        if stage_name == "detailedroute" and "route__wirelength" in value:
-            wirelength = value["route__wirelength"]
-        if stage_name == stop_stage and "timing__setup__ws" in value:
-            worst_slack = value["timing__setup__ws"]
-        if stage_name == stop_stage and "power__total" in value:
-            total_power = value["power__total"]
-        if stage_name == stop_stage and "design__instance__utilization" in value:
-            final_util = value["design__instance__utilization"]
-        if stage_name == stop_stage and "design__instance__area" in value:
-            design_area = value["design__instance__area"]
-        if stage_name == stop_stage and "design__core__area" in value:
-            core_area = value["design__core__area"]
-        if stage_name == stop_stage and "design__die__area" in value:
-            die_area = value["design__die__area"]
-    ret = {
-        "clk_period": clk_period,
+        worst_slack = perf.clock_period_ps - perf.critical_path_ps
+ 
+    # The proto defines cell_area = die_area * cell_utilization_fraction.
+    if area.HasField("die_area_um2") and area.die_area_um2 > 0:
+        die_area = area.die_area_um2
+    else:
+        die_area = area.cell_area_um2 / area.cell_utilization_fraction
+ 
+    return {
+        "clk_period": perf.clock_period_ps,
         "worst_slack": worst_slack,
-        "total_power": total_power,
-        "core_util": core_util,
-        "final_util": final_util,
-        "design_area": design_area,
-        "core_area": core_area,
+        "total_power": report.power.total.total_watts,
+        "final_util": area.cell_utilization_fraction * 100.0,
         "die_area": die_area,
-        "wirelength": wirelength,
-        "num_drc": num_drc,
+        "num_drc": 0,  # not part of the proto or the benchmark
     }
-    return ret
 
 
 def read_config(file_name, mode, algorithm):

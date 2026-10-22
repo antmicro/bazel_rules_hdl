@@ -27,5 +27,6 @@ py_library(
     # Puts the repository root on sys.path so `import autotuner.<module>`
     # resolves, including when rules_hdl is used as an external module.
     imports = [".."],
-    deps = all_requirements,
+    deps = all_requirements
+    + ["//synthesis:power_performance_area_py_proto"],
 )

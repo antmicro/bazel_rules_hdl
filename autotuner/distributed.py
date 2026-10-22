@@ -135,14 +135,18 @@ class AutoTunerBase(tune.Trainable):
             }
         experiment_dir = os.path.join(RUN_DIR, self.trial_name, f"iteration{self.step_}")
         try:
-            self.flow.run_trial(self.params, trial_dir=experiment_dir)
-        except RuntimeError as err:
+            result = self.flow.run_trial(self.params, trial_dir=experiment_dir)
+        except (RuntimeError, ValueError) as err:
             print(f"[ERROR TUN-0100] {err}")
             return {METRIC: ERROR_METRIC, "effective_clk_period": ERROR_METRIC,
                     "num_drc": ERROR_METRIC, "die_area": ERROR_METRIC}
         self.step_ += 1
-        # FIXME: Placeholder until the metrics adapter exists.
-        return {METRIC: 1.0, "effective_clk_period": 0, "num_drc": 0, "die_area": 0}
+        if args.dry_run:
+            ## Fake metrics
+            return {METRIC: 1.0, "effective_clk_period": 0, "num_drc": 0, "die_area": 0}
+        metrics = read_metrics(result["reports"])
+        score, effective_clk_period, num_drc, die_area = self.evaluate(metrics)
+        return {METRIC: score, "effective_clk_period": effective_clk_period, "num_drc": num_drc, "die_area": die_area}
 
     def evaluate(self, metrics):
         """
@@ -544,7 +548,7 @@ def save_best(results):
 def make_flow(slots):
     bazel="echo" if args.dry_run else None
     return BazelFlow(
-        workspace=WORKSPACE_ROOT,
+        workspace_root=WORKSPACE_ROOT,
         run_dir=RUN_DIR,
         rules_hdl_repo=args.rules_hdl_repo,
         bazel=bazel,
