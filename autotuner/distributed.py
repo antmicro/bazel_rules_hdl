@@ -135,7 +135,7 @@ class AutoTunerBase(tune.Trainable):
             }
         experiment_dir = os.path.join(RUN_DIR, self.trial_name, f"iteration{self.step_}")
         try:
-            result = self.flow.run_trial(self.params, trial_dir=experiment_dir)
+            result = self.flow.run_trial(self.params, experiment_dir=experiment_dir)
         except (RuntimeError, ValueError) as err:
             print(f"[ERROR TUN-0100] {err}")
             return {METRIC: ERROR_METRIC, "effective_clk_period": ERROR_METRIC,
@@ -667,7 +667,7 @@ def main():
     validate_search_space(config_dict)  # dict configs only; skip for --algorithm ax
     best_params = []                    # replaces set_best_params(platform, design)
     make_flow(slots=1).run_trial(
-        {}, trial_dir=os.path.join(
+        {}, experiment_dir=os.path.join(
         RUN_DIR, "warmup"), stream=True)
 
     if args.mode == "tune":

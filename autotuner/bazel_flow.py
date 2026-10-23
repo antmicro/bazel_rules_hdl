@@ -124,9 +124,9 @@ class BazelFlow:
     workers.
     """
 
-    def __init__(self, workspace, run_dir, rules_hdl_repo, cells, top, sdc, deps,
+    def __init__(self, workspace_root, run_dir, rules_hdl_repo, cells, top, sdc, deps,
                  slots=4, bazel=None):
-        self.workspace = workspace
+        self.workspace_root = workspace_root
         self.run_dir = run_dir
         self.rules_hdl_repo = rules_hdl_repo
         self.cells = cells
@@ -139,7 +139,7 @@ class BazelFlow:
         if not self.bazel:
             raise RuntimeError(
                 "bazel not found in PATH (set AUTOTUNER_BAZEL to override)")
-        tag = hashlib.md5(workspace.encode()).hexdigest()[:10]
+        tag = hashlib.md5(workspace_root.encode()).hexdigest()[:10]
         self.cache_root = os.path.join(
             os.path.expanduser("~"), ".cache", "rules_hdl_autotuner", tag)
         os.makedirs(self.cache_root, exist_ok=True)
@@ -166,26 +166,26 @@ class BazelFlow:
                 return
             time.sleep(1)
 
-    def run_trial(self, params, trial_dir=None, stream=False):
+    def run_trial(self, params, experiment_dir=None, stream=False):
         """Build one trial. Raises RuntimeError if the build fails.
 
-        trial_dir: absolute directory inside the workspace that becomes the
+        experiment_dir: absolute directory inside the workspace that becomes the
         trial's Bazel package. Defaults to a fresh one under run_dir.
         """
-        if trial_dir is None:
-            trial_dir = os.path.join(
+        if experiment_dir is None:
+            experiment_dir = os.path.join(
                 self.run_dir, "trial_{}".format(uuid.uuid4().hex[:8]))
-        os.makedirs(trial_dir, exist_ok=True)
-        with open(os.path.join(trial_dir, "BUILD"), "w") as f:
+        os.makedirs(experiment_dir, exist_ok=True)
+        with open(os.path.join(experiment_dir, "BUILD"), "w") as f:
             f.write(render_build(
                 self.rules_hdl_repo, self.cells, self.top, self.sdc, self.deps, params))
 
-        rel = os.path.relpath(trial_dir, self.workspace).replace(os.sep, "/")
+        rel = os.path.relpath(experiment_dir, self.workspace_root).replace(os.sep, "/")
         if rel.startswith(".."):
-            raise ValueError("{} is outside the workspace {}".format(
-                trial_dir, self.workspace))
+            raise ValueError("{} is outside the workspace_root {}".format(
+                experiment_dir, self.workspace_root))
         label = "//{}:pnr".format(rel)
-        log_path = os.path.join(trial_dir, "bazel.log")
+        log_path = os.path.join(experiment_dir, "bazel.log")
 
         with self._slot() as slot:
             cmd = [
@@ -200,7 +200,7 @@ class BazelFlow:
             with open(log_path, "w") as log:
                 proc = subprocess.run(
                     cmd,
-                    cwd=self.workspace,
+                    cwd=self.workspace_root,
                     stdout=None if stream else log,
                     stderr=None if stream else subprocess.STDOUT,
                 )
@@ -208,7 +208,7 @@ class BazelFlow:
             raise RuntimeError(
                 "bazel build {} failed (exit {}); see {}".format(
                     label, proc.returncode, log_path))
-        return {"label": label, "trial_dir": trial_dir}
+        return {"label": label, "experiment_dir": experiment_dir}
 
     def shutdown(self):
         """Stop the bazel servers of all slots (call at the end of a run)."""
@@ -217,7 +217,7 @@ class BazelFlow:
                 subprocess.run(
                     [self.bazel, "--output_base=" + self._output_base(k),
                      "shutdown"],
-                    cwd=self.workspace,
+                    cwd=self.workspace_root,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
