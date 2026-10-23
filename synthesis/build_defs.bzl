@@ -34,6 +34,7 @@ ExternalSynthesisInfo = provider(
         "inputs": "File inputs",
         "uhdm_files": "UHDM files",
         "verilog_files": "Verilog Inputs",
+        "include_dirs": "Include Directories",
         "yosys_script": "yosys script file",
     },
 )
@@ -62,13 +63,42 @@ def _create_flist(ctx, flist_tag, files, short_path = False):
         ctx.actions.write(flist, "\n".join([f.path for f in files]) + "\n")
     return flist
 
+def _create_inc_dir_flist(ctx, flist_tag, include_dirs):
+    flist = ctx.actions.declare_file("{}_{}.flist".format(flist_tag, ctx.attr.name))
+
+    content = []
+    for name in include_dirs:
+        content.append(name)
+
+    ctx.actions.write(flist, "\n".join(content) + "\n")
+    return flist
+
+def _flatten_verilog_info(providers):
+    infos = depset([], transitive = [p.dag for p in providers]).to_list()
+
+    # Flatten
+    srcs = [info.srcs for info in infos]
+    hdrs = [info.hdrs for info in infos]
+
+    srcs = [f for sub_tuple in srcs for f in sub_tuple]
+    hdrs = [f for sub_tuple in hdrs for f in sub_tuple]
+
+    return (srcs, hdrs)
+
 def _synthesize_design_impl(ctx):
     transitive_srcs = _transitive_srcs([dep for dep in ctx.attr.deps if VerilogInfo in dep])
     verilog_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs.to_list()]
     verilog_data = [verilog_info_struct.data for verilog_info_struct in transitive_srcs.to_list()]
     verilog_files = [src for sub_tuple in (verilog_srcs + verilog_data) for src in sub_tuple]
     verilog_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in transitive_srcs.to_list()]
-    verilog_hdr_files = [hdr for sub_tuple in verilog_hdrs for hdr in sub_tuple]
+    verilog_hdr_dirs = [hdr for sub_tuple in verilog_hdrs for hdr in sub_tuple]
+
+    (_, hdrs) = _flatten_verilog_info([d[VerilogInfo] for d in ctx.attr.deps])
+    # Map hdrs
+    include_dirs = []
+    for h in hdrs:
+        include_dirs.append(h.dirname)
+    include_dirs = depset(include_dirs).to_list()
 
     verilog_flist = _create_flist(
         ctx,
@@ -87,6 +117,12 @@ def _synthesize_design_impl(ctx):
         files = uhdm_files,
     )
 
+    inc_dir_flist = _create_inc_dir_flist(
+        ctx,
+        flist_tag = "inc",
+        include_dirs = include_dirs,
+    )
+
     output_file_name = "{}_synth_output.v".format(ctx.attr.name)
     if ctx.attr.output_file_name:
         output_file_name = ctx.attr.output_file_name
@@ -101,9 +137,11 @@ def _synthesize_design_impl(ctx):
 
     inputs = []
     inputs.extend(verilog_files)
-    inputs.extend(verilog_hdr_files)
+    inputs.extend(verilog_hdr_dirs)
+
     inputs.append(verilog_flist)
     inputs.append(uhdm_flist)
+    inputs.append(inc_dir_flist)
     inputs.extend(uhdm_files)
     inputs.append(synth_tcl)
     inputs.append(abc_script)
@@ -164,6 +202,7 @@ def _synthesize_design_impl(ctx):
         "SYNTH_ADDITIONAL_ARGS": ctx.attr.synth_additional_args,
         "TOP": ctx.attr.top_module,
         "UHDM_FLIST": uhdm_flist,
+        "INC_DIR_FLIST": inc_dir_flist,
     }
 
     if ctx.attr.target_clock_period_pico_seconds:
@@ -236,6 +275,7 @@ def _synthesize_design_impl(ctx):
             yosys_script = synth_tcl,
             inputs = inputs,
             verilog_files = verilog_files,
+            include_dirs = include_dirs,
             uhdm_files = uhdm_files,
         ),
         make_verilog_info(
@@ -315,6 +355,13 @@ def _synthesize_binary_impl(ctx):
         short_path = True,
     )
 
+    # Write include directories to inc_*.flist file
+    env["INC_DIR_FLIST"] = _create_inc_dir_flist(
+        ctx,
+        flist_tag = "inc",
+        include_dirs = external_info.include_dirs,
+    )
+
     env["OUTPUT"] = "/tmp/{}.v".format(ctx.attr.name)
 
     script += script_prefix + "\n"
@@ -336,7 +383,7 @@ def _synthesize_binary_impl(ctx):
 
     runfiles = ctx.runfiles(files = [external_info.yosys_script]).merge_all([
         ctx.runfiles(external_info.inputs),
-        ctx.runfiles([env["UHDM_FLIST"], env["FLIST"]]),
+        ctx.runfiles([env["UHDM_FLIST"], env["FLIST"]], env["INC_DIR_FLIST"]),
         ctx.attr._runfiles_lib[DefaultInfo].default_runfiles,
         ctx.attr.yosys_tool[DefaultInfo].default_runfiles,
         ctx.attr.abc_tool[DefaultInfo].default_runfiles,
