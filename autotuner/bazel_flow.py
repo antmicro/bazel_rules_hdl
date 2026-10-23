@@ -140,8 +140,7 @@ class BazelFlow:
             raise RuntimeError(
                 "bazel not found in PATH (set AUTOTUNER_BAZEL to override)")
         tag = hashlib.md5(workspace_root.encode()).hexdigest()[:10]
-        self.cache_root = os.path.join(
-            os.path.expanduser("~"), ".cache", "rules_hdl_autotuner", tag)
+        self.cache_root = os.path.join(self.run_dir, "local_cache")
         os.makedirs(self.cache_root, exist_ok=True)
 
     def _output_base(self, slot):
