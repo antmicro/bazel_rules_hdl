@@ -12,6 +12,7 @@
 //See the License for the specific language governing permissions and
 //limitations under the License.
 
+`include "constants.svh"
 
 module verilog_counter(
   input wire clk,
@@ -21,7 +22,7 @@ module verilog_counter(
   reg [128:0] counter_tmp;
   always @ (posedge clk or posedge reset) begin
     if (reset) begin
-      counter_tmp <= 0;
+      counter_tmp <= `RESET_COUNTER_VALUE;
     end else begin
       counter_tmp <= counter_tmp + 1;
     end

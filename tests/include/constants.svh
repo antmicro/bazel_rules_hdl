@@ -1,0 +1,1 @@
+`define RESET_COUNTER_VALUE 0

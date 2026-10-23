@@ -13,6 +13,8 @@
 # limitations under the License.
 
 load("@rules_cc//cc:defs.bzl", "cc_test")
+load("//dependency_support/com_google_skywater_pdk:cells_info.bzl", "for_each_sky130_cells")
+load("//synthesis:defs.bzl", "synthesize_rtl")
 load("//verilator:defs.bzl", "verilator_cc_binary", "verilator_cc_library", "verilator_lint", "verilator_preprocess", "verilator_run")
 load("//verilator/package:defs.bzl", "verilator_package")
 load("//verilog:defs.bzl", "verilog_library")
@@ -246,3 +248,22 @@ verilator_preprocess(
     name = "adder_preprocess",
     module = ":adder",
 )
+
+[synthesize_rtl(
+    name = "test_include-synth_" + _frontends,
+    frontend = "slang",
+    standard_cells = for_each_sky130_cells(
+        "sc_hd",
+        include_corners = ["ff"],
+        include_temps = ["100C"],
+        include_volts = ["1v65"],
+    )[0][1],
+    top_module = "test_include",
+    deps = [
+        ":test_include",
+    ],
+) for _frontends in [
+    "slang",
+    "yosys",
+    "surelog",
+]]

@@ -36,6 +36,13 @@ BASIC_TESTS = [
     "verilog_counter",
 ]
 
+verilog_library(
+    name = "verilog_constants",
+    srcs = [
+        "include/constants.svh",
+    ],
+)
+
 # Basic `verilog_library` test
 [
     verilog_library(
@@ -43,21 +50,43 @@ BASIC_TESTS = [
         srcs = [
             test_name + ".v",
         ],
+        hdrs = [
+            ":verilog_constants",
+        ],
     )
     for test_name in BASIC_TESTS
 ]
 
 # Basic `synthesize_rtl` test
-[
-    synthesize_rtl(
-        name = test_name + "-synth",
-        top_module = test_name,
-        deps = [
-            ":" + test_name,
-        ],
-    )
-    for test_name in BASIC_TESTS
-]
+synthesize_rtl(
+    name = "verilog_adder-synth",
+    frontend = "yosys",
+    standard_cells = for_each_sky130_cells(
+        "sc_hd",
+        include_corners = ["ff"],
+        include_temps = ["100C"],
+        include_volts = ["1v65"],
+    )[0][1],
+    top_module = "verilog_adder",
+    deps = [
+        ":verilog_adder",
+    ],
+)
+
+synthesize_rtl(
+    name = "verilog_counter-synth",
+    frontend = "slang",
+    standard_cells = for_each_sky130_cells(
+        "sc_hd",
+        include_corners = ["ff"],
+        include_temps = ["100C"],
+        include_volts = ["1v65"],
+    )[0][1],
+    top_module = "verilog_counter",
+    deps = [
+        ":verilog_counter",
+    ],
+)
 
 # Basic `run_opensta` test (on output of `synthesize_rtl`)
 # Explicit split of rules, to use SDC only on the counter

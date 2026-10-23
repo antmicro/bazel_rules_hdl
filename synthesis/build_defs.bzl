@@ -31,6 +31,7 @@ ExternalSynthesisInfo = provider(
     "Surelog/UHDM based RTL representation",
     fields = {
         "env": "Map of env variables",
+        "header_files": "Include Directories",
         "inputs": "File inputs",
         "uhdm_files": "UHDM files",
         "verilog_files": "Verilog Inputs",
@@ -62,6 +63,30 @@ def _create_flist(ctx, flist_tag, files, short_path = False):
         ctx.actions.write(flist, "\n".join([f.path for f in files]) + "\n")
     return flist
 
+def _create_inc_dir_flist(ctx, flist_tag, files, hdr_files):
+    """Create an include directory list files from files and header files"""
+
+    ## Do it for both RTL files and headers, just in case the synthesis tool
+    ## does not set the RTL verilog directories as part of include paths
+    flist = ctx.actions.declare_file("{}_{}.flist".format(flist_tag, ctx.attr.name))
+
+    # Base include directories
+    base_include_dirs = depset([f.dirname for f in (files + hdr_files)]).to_list()
+
+    # For each include directory traverse it back to root and add all intermediate
+    # directories as potential locations of include files. Deduplicate the final
+    # list via depset()
+    include_dirs = []
+    for dirname in base_include_dirs:
+        parts = dirname.split("/")
+        for i in range(len(parts)):
+            include_dirs.append("/".join([parts[j] for j in range(0, i + 1)]))
+    include_dirs = depset(include_dirs).to_list()
+
+    ## Write to file
+    ctx.actions.write(flist, "\n".join([d for d in include_dirs]) + "\n")
+    return flist
+
 def _synthesize_design_impl(ctx):
     transitive_srcs = _transitive_srcs([dep for dep in ctx.attr.deps if VerilogInfo in dep])
     verilog_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs.to_list()]
@@ -87,6 +112,13 @@ def _synthesize_design_impl(ctx):
         files = uhdm_files,
     )
 
+    inc_dir_flist = _create_inc_dir_flist(
+        ctx,
+        flist_tag = "inc",
+        files = verilog_files,
+        hdr_files = verilog_hdr_files,
+    )
+
     output_file_name = "{}_synth_output.v".format(ctx.attr.name)
     if ctx.attr.output_file_name:
         output_file_name = ctx.attr.output_file_name
@@ -102,8 +134,10 @@ def _synthesize_design_impl(ctx):
     inputs = []
     inputs.extend(verilog_files)
     inputs.extend(verilog_hdr_files)
+
     inputs.append(verilog_flist)
     inputs.append(uhdm_flist)
+    inputs.append(inc_dir_flist)
     inputs.extend(uhdm_files)
     inputs.append(synth_tcl)
     inputs.append(abc_script)
@@ -154,6 +188,10 @@ def _synthesize_design_impl(ctx):
         for define in ctx.attr.verilog_defines:
             args.add(define)
 
+    # Validate frontend option
+    if (ctx.attr.frontend not in ["yosys", "surelog", "slang"]):
+        fail("synthesize_rtl: Expected \"frontend\" to be one of \"yosys\" \"surelog\", \"slang\", but received {}.".format(ctx.attr.frontend))
+
     standard_cell_black_box = ctx.actions.declare_file("{}_stdcells_blackbox.v".format(ctx.attr.name))
     script_env_files = {
         "ABC_SCRIPT": abc_script,
@@ -161,6 +199,8 @@ def _synthesize_design_impl(ctx):
         "CONSTR": constr,
         "DONT_USE_ARGS": dont_use_args,
         "FLIST": verilog_flist,
+        "FRONTEND": ctx.attr.frontend,
+        "INC_DIR_FLIST": inc_dir_flist,
         "LIBERTY": default_liberty_file,
         "OUTPUT": output_file,
         "STANDARD_CELL_BLACK_BOX": standard_cell_black_box,
@@ -249,6 +289,7 @@ def _synthesize_design_impl(ctx):
             yosys_script = synth_tcl,
             inputs = inputs,
             verilog_files = verilog_files,
+            header_files = verilog_hdr_files,
             uhdm_files = uhdm_files,
         ),
         make_verilog_info(
@@ -328,6 +369,14 @@ def _synthesize_binary_impl(ctx):
         short_path = True,
     )
 
+    # Write include directories to inc_*.flist file
+    env["INC_DIR_FLIST"] = _create_inc_dir_flist(
+        ctx,
+        flist_tag = "inc",
+        files = external_info.verilog_files,
+        hdr_files = external_info.header_files,
+    )
+
     env["OUTPUT"] = "/tmp/{}.v".format(ctx.attr.name)
 
     script += script_prefix + "\n"
@@ -348,7 +397,7 @@ def _synthesize_binary_impl(ctx):
 
     runfiles = ctx.runfiles(files = [external_info.yosys_script]).merge_all([
         ctx.runfiles(external_info.inputs),
-        ctx.runfiles([env["UHDM_FLIST"], env["FLIST"]]),
+        ctx.runfiles([env["UHDM_FLIST"], env["FLIST"]], env["INC_DIR_FLIST"]),
         ctx.attr._runfiles_lib[DefaultInfo].default_runfiles,
         ctx.attr.yosys_tool[DefaultInfo].default_runfiles,
         ctx.attr.abc_tool[DefaultInfo].default_runfiles,
@@ -415,6 +464,11 @@ synthesize_rtl = rule(
         ),
         "extra_tcl_command": attr.string(
             default = "",
+        ),
+        "frontend": attr.string(
+            values = ["yosys", "surelog", "slang"],
+            default = "yosys",
+            doc = "Frontend tool used to parse the design. Possible values are: yosys, surelog, slang",
         ),
         "hash_seed": attr.int(
             mandatory = False,

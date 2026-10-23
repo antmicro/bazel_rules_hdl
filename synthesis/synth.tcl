@@ -5,6 +5,8 @@
 # User-defined synthesis scripts need to consult the following environment
 # variables for their parameters:
 # FLIST = a file that lists verilog sources (one file per line)
+# INC_DIR_FLIST = a file that lists verilog sources (one file per line)
+# FRONTEND = which frontend tool to use for compilation
 # TOP = top module for synthesis
 # LIBERTY = liberty file for the target technology library
 # OUTPUT = verilog file for synthesis output
@@ -29,16 +31,35 @@ set srcs_flist_path $::env(FLIST)
 set srcs_flist_file [open $srcs_flist_path "r"]
 set srcs_flist_data [read $srcs_flist_file]
 set srcs [split $srcs_flist_data "\n"]
-set srcs [linsert $srcs 0 $::env(STANDARD_CELL_BLACK_BOX)]
-puts $srcs
+
+# read include dirs
+set inc_hdr_flist_path $::env(INC_DIR_FLIST)
+set inc_hdr_flist_file [open $inc_hdr_flist_path "r"]
+set inc_hdr_flist_data [read $inc_hdr_flist_file]
+set incdir_args {}
+foreach dir_path [split  $inc_hdr_flist_data "\n"] {
+    set dir [string trim $dir_path]
+    if {$dir eq ""} continue
+
+    if { $::env(FRONTEND) eq "surelog" } {
+        lappend incdir_args [format "+incdir+%s" $dir]
+    } elseif { $::env(FRONTEND) eq "slang" } {
+        lappend incdir_args [format "-I%s" $dir]
+    } else {
+        lappend incdir_args [format "-I%s" $dir]
+    }
+}
 foreach src $srcs {
     # Skip empty lines, including the implict one after the last \n delimiter
     # for files that end with a newline.
     if {$src eq ""} continue
-    if {[info exists ::env(USE_SURELOG_FRONTEND)]} {
-      yosys read_systemverilog $src
+
+    if { $::env(FRONTEND) eq "surelog" } {
+      yosys read_systemverilog {*}$incdir_args $src
+    } elseif { $::env(FRONTEND) eq "slang" } {
+        yosys read_slang {*}$incdir_args $src
     } else {
-      yosys read_verilog -sv -defer $src
+      yosys read_verilog -sv -defer {*}$incdir_args $src
     }
 }
 
@@ -47,7 +68,7 @@ set srcs_uhdm_flist_path $::env(UHDM_FLIST)
 set srcs_uhdm_flist_file [open $srcs_uhdm_flist_path "r"]
 set srcs_uhdm_flist_data [read $srcs_uhdm_flist_file]
 set srcs [split $srcs_uhdm_flist_data "\n"]
-puts $srcs
+
 foreach src $srcs {
     # Skip empty lines, including the implict one after the last \n delimiter
     # for files that end with a newline.
