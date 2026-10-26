@@ -442,25 +442,20 @@ def read_metrics(reports_dict, stop_stage=None, fake=False):
         print("ERROR: missing detailed_routing reports")
         sys.exit(1)
     with open(reports_dict["detailed_routing"], "r") as filehandler:
-        data = json.load(filehandler)
-    for elm in data:
-        print(f"elm: {elm}\ttype: {type(elm)}")
-    worst_slack = None
-    for path_group in data["checks"]:
-        if worst_slack is None:
-            worst_slack = path_group["slack"]
-        elif (path_group["slack"] < worst_slack):
-            worst_slack = path_group["slack"]
-           
+        data = json.load(filehandler)["detailed_routing"]
+    worst_slack = data["timing"]["setup"]["wns"]
+    total_power = data["power"]["Total"]["total"]
+    total_area = data["area"]["design_area"]
+    num_drc = data["drc"]["count"]
         
 
     return {
         "clk_period": 10000,
         "worst_slack": worst_slack,
-        "total_power": 1e-6,
+        "total_power": total_power,
         "final_util": 42.0,
-        "die_area": 123.4,
-        "num_drc": 0,
+        "die_area": total_area,
+        "num_drc": num_drc,
     }
 
     try:
