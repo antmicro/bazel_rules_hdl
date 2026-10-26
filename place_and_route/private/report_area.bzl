@@ -15,20 +15,28 @@
 """Report Area Commands"""
 
 def generate_area_results(output_file, json = False):
-    """Returns a list of openroad commands that will calculate the design area and write it to a text proto.
+    """Returns a list of openroad commands that will calculate the design area and write it to a file
 
     Design area is defined as the sum of the area of all the instances/standard-cells in a design.
 
     Args:
         output_file: The output textproto.
         json: Set to True to have the output being in JSON format, default to False thus text form.
+
+    Returns:
+        List of openroad commands
     """
+    if json:
+        write_cmd = "puts $fp \"{\n  \\\"area\\\": ${design_area}\n}\""
+    else:
+        write_cmd = "puts $fp \"area_micro_meters_squared: ${design_area}\""
+
     return [
         "report_design_area",
         "set design_area [sta::format_area [rsz::design_area] 0]",
         "set fp [open \"{output_file}\" w+]".format(
             output_file = output_file.path,
         ),
-        "puts $fp \"area_micro_meters_squared: ${design_area}\"",
+        write_cmd,
         "close $fp",
     ]

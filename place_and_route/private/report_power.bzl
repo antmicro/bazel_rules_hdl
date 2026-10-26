@@ -24,24 +24,25 @@ def generate_power_results(ctx, output_file, json = False):
       ctx: rule context
       output_file: generated file with the results
       json: boolean. Text format by default, set to true to output in JSON format
+
+    Returns:
+        List of openroad commands
     """
     netlist_target = ctx.attr.synthesized_rtl
     liberty = netlist_target[SynthesisInfo].standard_cell_info.default_corner.liberty
     if json:
-        cmd = "report_power -format json"
+        return ["report_power -format json > {output_file}".format(output_file = output_file.path)]
     else:
-        cmd = "report_power"
-
-    return [
-        cmd,
-        "set power_result [sta::design_power [lindex [sta::get_scenes] 0]]",
-        "set fp [open \"{output_file}\" w+]".format(
-            output_file = output_file.path,
-        ),
-        "puts $fp \"total_package_power_watts: [lindex $power_result 3]\"",
-        "puts $fp \"corner: \\\"{corner}\\\"\"".format(
-            corner = liberty.basename[:-(len(liberty.extension) + 1)],
-        ),
-        "puts $fp \"power_maginitude: \\\"[sta::unit_scale_abbreviation \"power\"]\\\"\"",
-        "close $fp",
-    ]
+        return [
+            "report_power",
+            "set power_result [sta::design_power [lindex [sta::get_scenes] 0]]",
+            "set fp [open \"{output_file}\" w+]".format(
+                output_file = output_file.path,
+            ),
+            "puts $fp \"total_package_power_watts: [lindex $power_result 3]\"",
+            "puts $fp \"corner: \\\"{corner}\\\"\"".format(
+                corner = liberty.basename[:-(len(liberty.extension) + 1)],
+            ),
+            "puts $fp \"power_maginitude: \\\"[sta::unit_scale_abbreviation \"power\"]\\\"\"",
+            "close $fp",
+        ]

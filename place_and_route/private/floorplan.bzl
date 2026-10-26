@@ -71,6 +71,7 @@ def init_floor_plan(ctx):
     verilog_based_power_results = ctx.actions.declare_file("{}_verilog_based_power_results.textproto".format(ctx.attr.name))
     verilog_based_power_results_json = ctx.actions.declare_file("{}_floorplan_power_report.json".format(ctx.attr.name))
     verilog_based_area_results = ctx.actions.declare_file("{}_verilog_based_area_results.textproto".format(ctx.attr.name))
+
     ## FIXME: no area report in JSON format yet
     verilog_based_area_results_json = ctx.actions.declare_file("{}_verilog_based_area_results.txt".format(ctx.attr.name))
     tieoneport = open_road_configuration.tie_high_port
