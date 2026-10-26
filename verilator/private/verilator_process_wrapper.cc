@@ -117,7 +117,10 @@ int main(int argc, char* argv[]) {
     }
     int result = std::system(cmd.c_str());
     if (result != 0) {
-        return WEXITSTATUS(result);
+#ifndef _WIN32
+        result = WEXITSTATUS(result);
+#endif
+        return result;
     }
 
     // Delete any non-deterministic files.
