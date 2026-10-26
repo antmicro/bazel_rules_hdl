@@ -664,7 +664,7 @@ def main():
             args.jobs,
             config_dict,
         )
-        reference = read_metrics(reference_experiment["reports"], args.stop_stage)
+        reference = read_metrics(reference_experiment["reports"], args.stop_stage, fake=args.dry_run)
 
         sample_names = {}
         def sample_name(trial):

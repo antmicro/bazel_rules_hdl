@@ -416,7 +416,7 @@ def _require(message, *fields):
                 f"{message.DESCRIPTOR.name}.{field} is not in the report")
  
  
-def read_metrics(reports_dict, stop_stage=None):
+def read_metrics(reports_dict, stop_stage=None, fake=False):
     """Read the JSON reports from a single experiment (BazelFlow class)
  
     Returns a dict with the keys in METRIC_KEYS. If the file is missing or
@@ -425,6 +425,16 @@ def read_metrics(reports_dict, stop_stage=None):
  
     stop_stage is unused; it is kept so existing callers do not change.
     """
+    if fake:
+        return {
+            "clk_period": 10000,
+            "worst_slack": 13,
+            "total_power": 1e-6,
+            "final_util": 42.0,
+            "die_area": 123.4,
+            "num_drc": 0,
+        }
+
     print("\t\t\tDEBUG")
     print(reports_dict)
     print("\t\t\tDEBUG")
