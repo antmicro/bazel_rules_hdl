@@ -320,13 +320,6 @@ def parse_arguments():
         help="Search algorithm to use for Autotuning.",
     )
     tune_parser.add_argument(
-        "--eval",
-        type=str,
-        choices=["default", "ppa-improv"],
-        default="default",
-        help="Evaluate function to use with search algorithm.",
-    )
-    tune_parser.add_argument(
         "--samples",
         type=int,
         metavar="<int>",
@@ -346,13 +339,6 @@ def parse_arguments():
         metavar="<float>",
         default=1,
         help="Number of CPUs to request for each tuning job.",
-    )
-    tune_parser.add_argument(
-        "--reference",
-        type=str,
-        metavar="<path>",
-        default=None,
-        help="Reference file for use with PPAImprov.",
     )
     tune_parser.add_argument(
         "--perturbation",
@@ -429,13 +415,6 @@ def parse_arguments():
     args = parser.parse_args()
     if args.mode == "tune":
         args.algorithm = args.algorithm.lower()
-        # Validation of arguments
-        if args.eval == "ppa-improv" and args.reference is None:
-            print(
-                '[ERROR TUN-0006] The argument "--eval ppa-improv"'
-                ' requires that "--reference <FILE>" is also given.'
-            )
-            sys.exit(7)
 
     # If the experiment name is the default, add a UUID to the end.
     if args.experiment == "test":
@@ -666,12 +645,15 @@ def main():
     reset_run_dir(RUN_DIR)
     validate_search_space(config_dict)  # dict configs only; skip for --algorithm ax
     best_params = []                    # replaces set_best_params(platform, design)
-    make_flow(slots=1).run_trial(
+    ## Regardless of settings, perform a reference run
+    ## This has 2 distincts purposes: have a single run to building all the tools with bazel
+    ## So these can be cached
+    ## And create a reference data point for all metrics so later runs can be improved upon
+    reference_experiment = make_flow(slots=1).run_trial(
         {}, experiment_dir=os.path.join(
-        RUN_DIR, "warmup"), stream=True)
+        RUN_DIR, "reference"), stream=True)
 
     if args.mode == "tune":
-        ## FIXME: where to get best_param
         best_params = set_best_params()
         search_algo = set_algorithm(
             args.algorithm,
@@ -682,10 +664,7 @@ def main():
             args.jobs,
             config_dict,
         )
-        TrainClass = set_training_class(args.eval)
-        # PPAImprov requires a reference file to compute training scores.
-        if args.eval == "ppa-improv":
-            reference = read_metrics(args.reference, args.stop_stage)
+        reference = read_metrics(reference_experiment["reports"], args.stop_stage)
 
         sample_names = {}
         def sample_name(trial):
@@ -712,6 +691,7 @@ def main():
             tune_args["scheduler"] = AsyncHyperBandScheduler()
         if args.algorithm != "ax":
             tune_args["config"] = config_dict
+        TrainClass = PPAImprov
         analysis = tune.run(TrainClass, **tune_args)
 
         task_id = save_best.remote(analysis)
@@ -722,9 +702,9 @@ def main():
         if analysis.best_result[METRIC] == ERROR_METRIC:
             print("[ERROR TUN-0016] No successful runs found.")
             sys.exit(16)
-    elif args.mode == "sweep":
-        sweep()
-
+    else:
+        print(f"[ERROR] only tune mode is supported for now. Unsupported mode value {args.mode}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

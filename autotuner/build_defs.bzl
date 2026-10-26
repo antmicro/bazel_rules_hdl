@@ -13,6 +13,7 @@ def run_autotuner_tune(
         sdc = None,
         samples = 1,
         iterations = 1,
+        jobs = 1,
         run_dir = None,
         **kwargs):
     """Run the autotuner `tune` function on a design. Launch with `bazel run`.
@@ -26,6 +27,7 @@ def run_autotuner_tune(
         sdc: sdc file for the design.
         samples: Number of samples per iteration.
         iterations: Number of successive iterations.
+        jobs: number of maximum parallel jobs
         run_dir: Path to the execution directory
         **kwargs: Forwarded to py_binary (visibility, tags, ...).
     """
@@ -43,6 +45,7 @@ def run_autotuner_tune(
         "--top %s" % top,
         "--cells %s" % str(native.package_relative_label(cells)),
         "--sdc %s" % str(native.package_relative_label(sdc)),
+        "--jobs %s" % str(jobs),
         "--run-dir %s" % run_dir,
         "--rules_hdl_repo",
         rules_hdl,

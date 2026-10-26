@@ -237,7 +237,8 @@ run_autotuner_tune(
     cells = "@org_theopenroadproject_asap7sc7p5t_27//:asap7-sc7p5t_rev27_rvt_4x-ccs_ss",
     config = "counter_autotuner.json",
     iterations = 1,
-    samples = 2,
+    samples = 1,
+    jobs = 1,
     top = "verilog_counter",
     sdc = ":constraint",
     deps = [

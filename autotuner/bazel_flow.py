@@ -7,6 +7,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -55,6 +56,7 @@ BASE = {
     },
 }
 
+_REPORT_RE = re.compile(r"^pnr_(?P<step>.+)_report\.json$")
 
 def validate_search_space(keys):
     """Fail at startup, before Ray starts, on unsupported parameters."""
@@ -207,7 +209,40 @@ class BazelFlow:
             raise RuntimeError(
                 "bazel build {} failed (exit {}); see {}".format(
                     label, proc.returncode, log_path))
-        return {"label": label, "experiment_dir": experiment_dir}
+        reports = self._collect_reports(slot, label, experiment_dir)
+        return {"label": label, "experiment_dir": experiment_dir, "reports": reports}
+
+
+    def _collect_reports(self, slot, label, experiment_dir):
+        """Copies the report JSON files of the built pnr target into
+        <trial_dir>/results and returns {step: path of the copy}.
+
+        The step is the part of the file name between "pnr_" and "_report.json",
+        e.g. {"cts": ..., "global_routing": ..., "detailed_routing": ...}.
+        Only files that are default outputs of the target are found; a step
+        whose report does not exist is simply missing from the dict.
+        """
+        base = [self.bazel, "--output_base=" + self._output_base(slot),
+                "--max_idle_secs=600"]
+        kwargs = dict(cwd=self.workspace_root, capture_output=True, text=True)
+        info = subprocess.run(base + ["info", "execution_root"], **kwargs)
+        files = subprocess.run(
+            base + ["cquery", label, "--output=files"], **kwargs)
+        if info.returncode != 0 or files.returncode != 0:
+            raise RuntimeError(
+                "cannot list the outputs of {}: {}".format(
+                    label, (info.stderr + files.stderr).strip()[-500:]))
+        execution_root = info.stdout.strip()
+
+        reports = {}
+        results_dir = os.path.join(experiment_dir, "results")
+        for rel_path in files.stdout.splitlines():
+            match = _REPORT_RE.match(os.path.basename(rel_path.strip()))
+            source = os.path.join(execution_root, rel_path.strip())
+            if match and os.path.isfile(source):
+                os.makedirs(results_dir, exist_ok=True)
+                reports[match.group("step")] = shutil.copy(source, results_dir)
+        return reports
 
     def shutdown(self):
         """Stop the bazel servers of all slots (call at the end of a run)."""

@@ -416,11 +416,8 @@ def _require(message, *fields):
                 f"{message.DESCRIPTOR.name}.{field} is not in the report")
  
  
-def read_metrics(metrics_file, stop_stage=None):
-    """Reads the <name>_report.textproto written by the place_and_route rule.
- 
-    The file is a text-format hdl.ppa.PowerPerformanceAreaProto
-    (synthesis/power_performance_area.proto).
+def read_metrics(reports_dict, stop_stage=None):
+    """Read the JSON reports from a single experiment (BazelFlow class)
  
     Returns a dict with the keys in METRIC_KEYS. If the file is missing or
     cannot be trusted, every value is "ERR", which the evaluate functions
@@ -428,6 +425,9 @@ def read_metrics(metrics_file, stop_stage=None):
  
     stop_stage is unused; it is kept so existing callers do not change.
     """
+    print("\t\t\tDEBUG")
+    print(reports_dict)
+    print("\t\t\tDEBUG")
     try:
         report = ppa_pb2.PowerPerformanceAreaProto()
         with open(metrics_file) as report_file:
