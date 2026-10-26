@@ -127,7 +127,7 @@ class BazelFlow:
     """
 
     def __init__(self, workspace_root, run_dir, rules_hdl_repo, cells, top, sdc, deps,
-                 slots=4, bazel=None):
+                 slots=4, bazel=None, cache_root=None):
         self.workspace_root = workspace_root
         self.run_dir = run_dir
         self.rules_hdl_repo = rules_hdl_repo
@@ -142,7 +142,7 @@ class BazelFlow:
             raise RuntimeError(
                 "bazel not found in PATH (set AUTOTUNER_BAZEL to override)")
         tag = hashlib.md5(workspace_root.encode()).hexdigest()[:10]
-        self.cache_root = os.path.join(self.run_dir, "local_cache")
+        self.cache_root = cache_root or os.path.join(workspace_root, "autotuner_runs", ".cache")
         os.makedirs(self.cache_root, exist_ok=True)
 
     def _output_base(self, slot):
@@ -194,8 +194,7 @@ class BazelFlow:
                 "--output_base=" + self._output_base(slot),
                 "--max_idle_secs=600",
                 "build",
-                "--symlink_prefix=/",  # no bazel-* symlinks in the workspace
-                "--disk_cache=" + os.path.join(self.cache_root, "disk_cache"),
+                "--config=autotuner", ## TODO: this depends on .bazelrc, check if it can stay
                 label,
             ]
             with open(log_path, "w") as log:
@@ -225,14 +224,13 @@ class BazelFlow:
         base = [self.bazel, "--output_base=" + self._output_base(slot),
                 "--max_idle_secs=600"]
         kwargs = dict(cwd=self.workspace_root, capture_output=True, text=True)
-        info = subprocess.run(base + ["info", "execution_root"], **kwargs)
         files = subprocess.run(
-            base + ["cquery", label, "--output=files"], **kwargs)
-        if info.returncode != 0 or files.returncode != 0:
+            base + ["cquery", "--config=autotuner", label, "--output=files"], **kwargs)
+        if files.returncode != 0:
             raise RuntimeError(
                 "cannot list the outputs of {}: {}".format(
                     label, (info.stderr + files.stderr).strip()[-500:]))
-        execution_root = info.stdout.strip()
+        execution_root = os.path.join(self._output_base(slot), "execroot", "_main")
 
         reports = {}
         results_dir = os.path.join(experiment_dir, "results")

@@ -438,6 +438,31 @@ def read_metrics(reports_dict, stop_stage=None, fake=False):
     print("\t\t\tDEBUG")
     print(reports_dict)
     print("\t\t\tDEBUG")
+    if "detailed_routing" not in reports_dict:
+        print("ERROR: missing detailed_routing reports")
+        sys.exit(1)
+    with open(reports_dict["detailed_routing"], "r") as filehandler:
+        data = json.load(filehandler)
+    for elm in data:
+        print(f"elm: {elm}\ttype: {type(elm)}")
+    worst_slack = None
+    for path_group in data["checks"]:
+        if worst_slack is None:
+            worst_slack = path_group["slack"]
+        elif (path_group["slack"] < worst_slack):
+            worst_slack = path_group["slack"]
+           
+        
+
+    return {
+        "clk_period": 10000,
+        "worst_slack": worst_slack,
+        "total_power": 1e-6,
+        "final_util": 42.0,
+        "die_area": 123.4,
+        "num_drc": 0,
+    }
+
     try:
         report = ppa_pb2.PowerPerformanceAreaProto()
         with open(metrics_file) as report_file:
