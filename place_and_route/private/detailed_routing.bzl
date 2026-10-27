@@ -33,8 +33,11 @@ def detailed_routing(ctx, open_road_info):
     inputs = []
 
     output_drc = ctx.actions.declare_file("{}_output_drc".format(ctx.attr.name))
+    output_timing = ctx.actions.declare_file("{}_output_timing".format(ctx.attr.name))
+    output_power = ctx.actions.declare_file("{}_output_power".format(ctx.attr.name))
     routed_def = ctx.actions.declare_file("{}_detail_routed.def".format(ctx.attr.name))
     report_json = ctx.actions.declare_file("{}_detailed_routing_report.json".format(ctx.attr.name))
+    report_checks = ctx.actions.declare_file("{}_detailed_routing_checks.json".format(ctx.attr.name))
 
     open_road_configuration = get_open_road_configuration(ctx.attr.synthesized_rtl[SynthesisInfo])
 
@@ -79,7 +82,7 @@ def detailed_routing(ctx, open_road_info):
 
     open_road_commands.append("puts \"report_checks -path_delay min_max -format full_clock_expanded -fields \\\"input_pin slew capacitance\\\" -digits 3\"")
     open_road_commands.append("report_checks -path_delay min_max -format full_clock_expanded -fields \"input_pin slew capacitance\" -digits 3")
-    open_road_commands.append("report_checks -path_delay min_max -format json -digits 4 > {}".format(report_json.path))
+    open_road_commands.append("report_checks -path_delay min_max -format json -digits 4 > {}".format(report_checks.path))
 
     open_road_commands.append("puts \"report_wns\"")
     open_road_commands.append("report_wns")
@@ -97,6 +100,71 @@ def detailed_routing(ctx, open_road_info):
     open_road_commands.append("report_units")
     open_road_commands.append("write_def {}".format(routed_def.path))
 
+    ## DRC count, placeholder until better is found
+    drc_count_cmd = """
+set fp [open "{}" r]
+set drc_count 0
+while {{[gets $fp line] >= 0}} {{ incr drc_count }}
+close $fp
+""".format(output_drc.path)
+    open_road_commands.append(drc_count_cmd)
+
+    # Timing reports
+    timing_report_cmd = """
+set fp [open "{timing_file}" w]
+report_wns > {timing_file}
+report_tns >> {timing_file}
+close $fp
+set fp [open "{timing_file}" r]
+while {{[gets $fp line] >= 0}} {{
+set name  [lindex $line 0]
+set value [lindex $line end]
+if {{$name eq "wns"}} {{
+    set wns $value
+}} elseif {{$name eq "tns"}} {{
+    set tns $value
+}}
+}}
+close $fp
+""".format(timing_file = output_timing.path)
+    open_road_commands.append(timing_report_cmd)
+
+    # Area report
+    area_report_cmd = """
+report_design_area
+set design_area [sta::format_area [rsz::design_area] 0]
+"""
+    open_road_commands.append(area_report_cmd)
+
+    # Power report
+    power_report_cmd = """
+report_power -format json > {output_power}
+set fp [open "{output_power}" r]
+set power [read $fp]
+""".format(output_power = output_power.path)
+    open_road_commands.append(power_report_cmd)
+
+    # Combine results
+    json_report_cmd = """
+set fp [open "{report_json}" w]
+puts $fp "{{\\\"detailed_routing\\\": {{"
+puts $fp "  \\\"drc\\\": {{"
+puts $fp "    \\\"count\\\": $drc_count"
+puts $fp "  }},"
+puts $fp "  \\\"area\\\": {{"
+puts $fp "    \\\"design_area\\\": $design_area"
+puts $fp "  }},"
+puts $fp "  \\\"power\\\": $power,"
+puts $fp "  \\\"timing\\\": {{"
+puts $fp "    \\\"wns\\\": $wns,"
+puts $fp "    \\\"tns\\\": $tns"
+puts $fp "  }}"
+puts $fp "}}"
+puts $fp "}}"
+close $fp
+""".format(report_json = report_json.path)
+    open_road_commands.append(json_report_cmd)
+
     execution_requirements = {}
     if ctx.attr.local_detailed_routing_execution:
         execution_requirements["no-remote-exec"] = ""
@@ -109,6 +177,9 @@ def detailed_routing(ctx, open_road_info):
         outputs = [
             routed_def,
             output_drc,
+            output_timing,
+            output_power,
+            report_checks,
             report_json,
         ],
         execution_requirements = execution_requirements,
@@ -119,7 +190,7 @@ def detailed_routing(ctx, open_road_info):
         commands = open_road_commands,
         input_files = depset(inputs),
         output_db = command_output.db,
-        logs = depset([command_output.log_file]),
+        logs = depset([command_output.log_file, output_drc]),
         routed_def = routed_def,
         report_json = depset([report_json]),
     )
