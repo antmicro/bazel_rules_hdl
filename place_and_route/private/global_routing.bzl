@@ -60,7 +60,7 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
             global_routing_layers = open_road_configuration.global_routing_signal_layers,
             global_routing_clock_layers = open_road_configuration.global_routing_clock_layers,
         ),
-        "global_route -congestion_iterations 100",
+        "global_route -congestion_iterations 10 -allow_congestion",
         "estimate_parasitics -global_routing",
         "report_checks -path_delay min_max -format full_clock_expanded -fields {input_pin slew capacitance} -digits 3",
         "report_wns",
