@@ -33,7 +33,6 @@ def detailed_routing(ctx, open_road_info):
     inputs = []
 
     output_drc = ctx.actions.declare_file("{}_output_drc".format(ctx.attr.name))
-    output_timing = ctx.actions.declare_file("{}_output_timing".format(ctx.attr.name))
     output_power = ctx.actions.declare_file("{}_output_power".format(ctx.attr.name))
     routed_def = ctx.actions.declare_file("{}_detail_routed.def".format(ctx.attr.name))
     report_json = ctx.actions.declare_file("{}_detailed_routing_report.json".format(ctx.attr.name))
@@ -111,20 +110,22 @@ close $fp
 
     # Timing reports
     timing_report_cmd = """
-report_wns > {timing_file}
-report_tns >> {timing_file}
-set fp [open "{timing_file}" r]
-while {{[gets $fp line] >= 0}} {{
-set name  [lindex $line 0]
-set value [lindex $line end]
-if {{$name eq "wns"}} {{
-    set wns $value
-}} elseif {{$name eq "tns"}} {{
-    set tns $value
-}}
-}}
-close $fp
-""".format(timing_file = output_timing.path)
+tee -variable report_wns_setup -quiet {report_wns -max}
+tee -variable report_tns_setup -quiet {report_wns -max}
+tee -variable report_wns_hold -quiet {report_wns -min}
+tee -variable report_tns_hold -quiet {report_wns -min}
+set wns_setup [lindex [split $report_wns_setup " "]  2]
+set tns_setup [lindex [split $report_tns_setup " "] 2]
+set wns_hold [lindex [split $report_wns_hold " "] 2]
+set tns_hold [lindex [split $report_tns_hold " "] 2]
+set json_timing "\\\"setup\\\": {\\n"
+append json_timing "\\\"wns\\\": $wns_setup,\\n"
+append json_timing "\\\"tns\\\": $tns_setup\\n"
+append json_timing "}, \\\"hold\\\": {\\n"
+append json_timing "\\\"wns\\\": $wns_hold,\\n"
+append json_timing "\\\"tns\\\": $tns_hold\\n"
+append json_timing "}"
+"""
     open_road_commands.append(timing_report_cmd)
 
     # Area report
@@ -145,11 +146,9 @@ set power [read $fp]
     # Units
     unit_cmd = """
 tee -variable content -quiet { report_units }
-puts $content
 set json_unit ""
 set separator ""
 foreach line [split $content "\\n"] {
-  puts $line
   set name  [lindex $line 0]
   set value [lindex $line end]
   if {[string trim $name] ne "" && [string trim $value] ne ""} {
@@ -172,9 +171,7 @@ puts $fp "  \\\"area\\\": {{"
 puts $fp "    \\\"design_area\\\": $design_area"
 puts $fp "  }},"
 puts $fp "  \\\"power\\\": $power,"
-puts $fp "  \\\"timing\\\": {{"
-puts $fp "    \\\"wns\\\": $wns,"
-puts $fp "    \\\"tns\\\": $tns"
+puts $fp "  \\\"timing\\\": {{\n$json_timing"
 puts $fp "  }},"
 puts $fp "  \\\"units\\\": {{\\n$json_unit"
 puts $fp "}}"
@@ -196,7 +193,6 @@ close $fp
         outputs = [
             routed_def,
             output_drc,
-            output_timing,
             output_power,
             report_checks,
             report_json,
