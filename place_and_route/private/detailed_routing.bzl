@@ -111,10 +111,8 @@ close $fp
 
     # Timing reports
     timing_report_cmd = """
-set fp [open "{timing_file}" w]
 report_wns > {timing_file}
 report_tns >> {timing_file}
-close $fp
 set fp [open "{timing_file}" r]
 while {{[gets $fp line] >= 0}} {{
 set name  [lindex $line 0]
@@ -144,6 +142,25 @@ set power [read $fp]
 """.format(output_power = output_power.path)
     open_road_commands.append(power_report_cmd)
 
+    # Units
+    unit_cmd = """
+tee -variable content -quiet { report_units }
+puts $content
+set json_unit ""
+set separator ""
+foreach line [split $content "\\n"] {
+  puts $line
+  set name  [lindex $line 0]
+  set value [lindex $line end]
+  if {[string trim $name] ne "" && [string trim $value] ne ""} {
+    set json_line "\\\"$name\\\": \\\"$value\\\""
+    append json_unit "$separator$json_line"
+    set separator ",\\n"
+  }
+}
+"""
+    open_road_commands.append(unit_cmd)
+
     # Combine results
     json_report_cmd = """
 set fp [open "{report_json}" w]
@@ -158,7 +175,9 @@ puts $fp "  \\\"power\\\": $power,"
 puts $fp "  \\\"timing\\\": {{"
 puts $fp "    \\\"wns\\\": $wns,"
 puts $fp "    \\\"tns\\\": $tns"
-puts $fp "  }}"
+puts $fp "  }},"
+puts $fp "  \\\"units\\\": {{\\n$json_unit"
+puts $fp "}}"
 puts $fp "}}"
 puts $fp "}}"
 close $fp
