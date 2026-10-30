@@ -35,6 +35,11 @@ def benchmark(ctx, open_road_info):
     open_road_commands = [
         est_parasitic_cmd,
     ]
+
+    # Clock propagation is not stored in the database, so it has to be set again
+    # when the flow went through clock tree synthesis.
+    if ctx.attr.stop_after_step in ["", "clock_tree_synthesis", "global_routing", "detailed_routing"]:
+        open_road_commands.insert(0, "set_propagated_clock [all_clocks]")
     if ctx.attr.clock_period or ctx.attr.clocks or ctx.file.sdc:
         open_road_commands.append("set_power_activity -input -activity {} -duty 0.5".format(ctx.attr.power_switching_activity))
 
