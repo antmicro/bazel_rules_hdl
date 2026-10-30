@@ -78,17 +78,19 @@ def _precompile_header(ctx, cc_toolchain, cc_feature_configuration, hdr_basename
         args.add_all(compilation_ctx.system_includes.to_list(), before_each = "-isystem")
         args.add_all(compilation_ctx.defines.to_list(), format_each = "-D%s")
 
+    precompiled_hdr_dir = ctx.label.name + "_gch"
+
     # Unless -MD is specified while creating the precompiled file,
     # the .d file of the precompiled header will not show files included during the precompilation
     args.add("-MD")
-    precompiled_hdr_d = ctx.actions.declare_file(hdr_basename + ".gch.d")
+    precompiled_hdr_d = ctx.actions.declare_file(paths.join(precompiled_hdr_dir, hdr_basename + ".gch.d"))
     args.add("-MF", precompiled_hdr_d.path)
 
     # Configure precompiling header
     args.add("-xc++-header")
     args.add(hdr_dirname + "/" + hdr_basename)
 
-    precompiled_hdr = ctx.actions.declare_file(hdr_basename + ".gch")
+    precompiled_hdr = ctx.actions.declare_file(paths.join(precompiled_hdr_dir, hdr_basename + ".gch"))
     args.add("-o", precompiled_hdr.path)
 
     ctx.actions.run(
