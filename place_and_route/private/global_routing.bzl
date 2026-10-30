@@ -15,7 +15,7 @@
 """Global Routing openROAD commands"""
 
 load("//pdk:open_road_configuration.bzl", "get_open_road_configuration")
-load("//place_and_route:open_road.bzl", "OpenRoadInfo", "merge_open_road_info", "openroad_command")
+load("//place_and_route:open_road.bzl", "OpenRoadInfo", "format_openroad_do_not_use_list", "merge_open_road_info", "openroad_command", "placement_padding_commands")
 load("//place_and_route:private/report_area.bzl", "generate_area_results")
 load("//place_and_route:private/report_power.bzl", "generate_power_results")
 load("//synthesis:defs.bzl", "SynthesisInfo")
@@ -47,6 +47,8 @@ def global_routing(ctx, open_road_info):
     general_routing_power_results = ctx.actions.declare_file("{}_general_routing_power_results.textproto".format(ctx.attr.name))
     general_routing_area_results = ctx.actions.declare_file("{}_general_routing_area_results.textproto".format(ctx.attr.name))
 
+    placement_padding_struct = placement_padding_commands(ctx)
+
     open_road_commands = [
         """
 foreach layer_adjustment {global_routing_layer_adjustments} {{
@@ -62,6 +64,21 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
         ),
         "global_route -congestion_iterations 10 -allow_congestion",
         "set_propagated_clock [all_clocks]",
+        "estimate_parasitics -global_routing",
+        # Repair slew/cap and timing again with the global routing parasitics,
+        # which are worse than the placement estimates used by the earlier
+        # repair steps. Buffers are legalized and the affected nets rerouted.
+        format_openroad_do_not_use_list(open_road_configuration.do_not_use_cell_list),
+        "global_route -start_incremental",
+        "remove_fillers",
+        "repair_design",
+        "repair_timing -repair_tns 100",
+    ] + placement_padding_struct.commands + [
+        "detailed_placement",
+        "filler_placement \"{filler_cells}\"".format(
+            filler_cells = " ".join(open_road_configuration.fill_cells),
+        ),
+        "global_route -end_incremental -congestion_iterations 10 -allow_congestion",
         "estimate_parasitics -global_routing",
         "report_checks -path_delay min_max -format full_clock_expanded -fields {input_pin slew capacitance} -digits 3",
         "report_wns",
@@ -80,7 +97,7 @@ foreach layer_adjustment {global_routing_layer_adjustments} {{
         ctx,
         commands = open_road_commands,
         input_db = open_road_info.output_db,
-        inputs = [],
+        inputs = placement_padding_struct.inputs,
         outputs = [
             general_routing_power_results,
             general_routing_area_results,
