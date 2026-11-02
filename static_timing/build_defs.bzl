@@ -14,7 +14,7 @@
 
 """Rules for running openSTA on synthesized Verilog."""
 
-load("//synthesis:defs.bzl", "SynthesisInfo")
+load("//synthesis:defs.bzl", "SdcInfo", "SynthesisInfo")
 
 def _run_opensta_impl(ctx):
     """Implementation of the 'run_opensta' rule.
@@ -36,18 +36,22 @@ def _run_opensta_impl(ctx):
 
     sta_tcl = ctx.file.sta_tcl
     sta_log = ctx.actions.declare_file("{}_sta.log".format(ctx.attr.name))
-
+    sdc_list = ctx.attr.sdc.files.to_list() if ctx.attr.sdc != None else []
+    sdc = ""
+    for f in sdc_list:
+        sdc += " %s" % f.path
     env = {
         "ADDITIONAL_LIBERTIES": ",".join([f.path for f in additional_liberty_files]),
         "LIBERTY": default_liberty_file.path,
         "LOGFILE": sta_log.path,
         "NETLIST": netlist.path,
+        "SDC": sdc,
         "TOP": synth_info.top_module,
     }
 
     ctx.actions.run(
         outputs = [sta_log],
-        inputs = [default_liberty_file, sta_tcl, netlist] + additional_liberty_files,
+        inputs = [default_liberty_file, sta_tcl, netlist] + sdc_list + additional_liberty_files,
         arguments = ["-exit", sta_tcl.path],
         executable = ctx.executable._opensta,
         env = env,
@@ -65,6 +69,12 @@ def _run_opensta_impl(ctx):
     ]
 
 run_opensta_attrs = {
+    "sdc": attr.label(
+        allow_single_file = True,
+        default = None,
+        doc = "Constraints file in SDC format",
+        providers = [SdcInfo],
+    ),
     "sta_tcl": attr.label(
         default = Label("//static_timing:sta.tcl"),
         allow_single_file = True,
@@ -88,6 +98,7 @@ Example:
     ```
     run_opensta(
         name = "picorv32_benchmark_sta",
+        sdc = ":constraints",
         synth_target = ":picorv32_synth",
     )
     ```
