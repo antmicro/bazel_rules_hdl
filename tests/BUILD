@@ -60,13 +60,17 @@ BASIC_TESTS = [
 ]
 
 # Basic `run_opensta` test (on output of `synthesize_rtl`)
-[
-    run_opensta(
-        name = test_name + "-synth_sta",
-        synth_target = ":" + test_name + "-synth",
-    )
-    for test_name in BASIC_TESTS
-]
+# Explicit split of rules, to use SDC only on the counter
+run_opensta(
+    name = "verilog_adder-synth_sta",
+    synth_target = ":verilog_adder-synth",
+)
+
+run_opensta(
+    name = "verilog_counter-synth_sta",
+    sdc = ":constraint",
+    synth_target = ":verilog_counter-synth",
+)
 
 # Basic `place_and_route` test (on output of `synthesize_rtl`)
 place_and_route(

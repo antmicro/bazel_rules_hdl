@@ -14,11 +14,15 @@ set sta_log $::env(LOGFILE)
 set netlist $::env(NETLIST)
 set liberty $::env(LIBERTY)
 set top $::env(TOP)
+set sdc $::env(SDC)
 
 sta::redirect_file_begin $sta_log
 read_verilog $netlist
 read_liberty $liberty
 link_design  $top
+foreach f $::env(SDC) {
+    read_sdc $f
+}
 report_checks -unconstrained
 sta::redirect_file_end
 
