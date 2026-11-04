@@ -14,10 +14,11 @@ llvm.toolchain(
 )
 use_repo(llvm, "llvm_toolchain")
 
-bazel_dep(name = "abc", version = "0.62-yosyshq")
+bazel_dep(name = "abc", version = "0.68-yosyshq.bcr.1")
+bazel_dep(name = "bison", version = "3.8.2.bcr.11")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2", repo_name = "com_google_googletest")
-bazel_dep(name = "readline", version = "8.3")
+bazel_dep(name = "readline", version = "8.3.bcr.1")
 bazel_dep(name = "libffi", version = "3.4.7.bcr.3")
 bazel_dep(name = "rules_bison", version = "0.4")
 
@@ -30,7 +31,7 @@ single_version_override(
 )
 
 bazel_dep(name = "rules_cc", version = "0.2.18")
-bazel_dep(name = "rules_cc_autoconf", version = "0.24.0")
+bazel_dep(name = "rules_cc_autoconf", version = "0.26.0")
 bazel_dep(name = "rules_flex", version = "0.4")
 bazel_dep(name = "rules_m4", version = "0.3.bcr.1")
 bazel_dep(name = "rules_license", version = "1.0.0")

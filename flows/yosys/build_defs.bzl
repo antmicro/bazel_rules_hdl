@@ -36,7 +36,6 @@ def _yosys_synth_file_step_impl(ctx):
         'LIBERTY_FILE=$(rlocation "%s")' % get_rlocation_path(ctx, liberty),
         'TCL_INIT=$(rlocation "tcl_lang/library/init.tcl")',
         'SYNTH_TCL=$(rlocation "%s")' % get_rlocation_path(ctx, synth_tcl),
-        'export YOSYS_DATDIR=$(dirname "$YOSYS")/',
         'export ABC="$ABC_BIN"',
         'export LIBERTY="$LIBERTY_FILE"',
         'export TCL_LIBRARY=$(dirname "$TCL_INIT")',

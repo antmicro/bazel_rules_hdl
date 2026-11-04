@@ -8,15 +8,16 @@ def _tools_extension_impl(module_ctx):
     maybe(
         http_archive,
         name = "at_clifford_yosys",
+        # The release tarball (unlike the source archive) includes submodules.
         urls = [
-            "https://github.com/YosysHQ/yosys/archive/8f07a0d8404f63349d8d3111217b73c9eafbd667.zip",
+            "https://github.com/YosysHQ/yosys/releases/download/v0.70/yosys.tar.gz",
         ],
-        sha256 = "46a9a4d969770fa20a2fd12c8e83307a597126609645c9655c370c0c365da344",
-        strip_prefix = "yosys-8f07a0d8404f63349d8d3111217b73c9eafbd667",
+        sha256 = "c6bd8b83aad633f6786fc861fe8f5dbc74c37bfae77f7bd0220e6f00f15f1d55",
         build_file = "//dependency_support/at_clifford_yosys:bundled.BUILD.bazel",
-        patches = [
-            "//dependency_support/at_clifford_yosys:yosys.patch",
-            "//dependency_support/at_clifford_yosys:autoname.patch",
+        # Submodules ship their own Bazel files, which would split packages
+        # and pull in deps we don't have.
+        patch_cmds = [
+            "find libs frontends -mindepth 2 \\( -name BUILD.bazel -o -name MODULE.bazel -o -name WORKSPACE \\) -delete",
         ],
     )
 

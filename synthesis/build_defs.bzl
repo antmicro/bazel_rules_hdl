@@ -185,19 +185,15 @@ def _synthesize_design_impl(ctx):
         script_env_files["ADDER_MAPPING"] = str(ha_fa_mapping_path)
         inputs.append(ha_fa_mapping[DefaultInfo].files.to_list()[0])
 
-    yosys_share_root = ""
     tcl_library_dir = ""
     yosys_runfiles = ctx.attr.yosys_tool[DefaultInfo].default_runfiles.files.to_list()
     for f in yosys_runfiles:
-        if not yosys_share_root and f.path.endswith("techmap.v"):
-            yosys_share_root = f.dirname + "/"
         if not tcl_library_dir and f.path.endswith("library/init.tcl"):
             tcl_library_dir = f.dirname
 
     env = {
         "ABC": ctx.executable.abc_tool.path,
         "TCL_LIBRARY": tcl_library_dir,
-        "YOSYS_DATDIR": yosys_share_root,
     }
 
     inputs.extend(yosys_runfiles)
@@ -338,7 +334,6 @@ def _synthesize_binary_impl(ctx):
     script += 'YOSYS=$(rlocation "at_clifford_yosys/yosys")\n'
     script += 'ABC_BIN=$(rlocation "abc/abc_bin")\n'
     script += 'TCL_INIT=$(rlocation "tcl_lang/library/init.tcl")\n'
-    script += 'export YOSYS_DATDIR=$(dirname "$YOSYS")/\n'
     script += 'export ABC="$ABC_BIN"\n'
     script += 'export TCL_LIBRARY=$(dirname "$TCL_INIT")\n'
 
