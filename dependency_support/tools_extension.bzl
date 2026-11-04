@@ -21,6 +21,26 @@ def _tools_extension_impl(module_ctx):
         ],
     )
 
+    # EQY, built against the Yosys above.
+    maybe(
+        http_archive,
+        name = "eqy",
+        urls = ["https://github.com/YosysHQ/eqy/archive/refs/tags/v0.70.tar.gz"],
+        sha256 = "8eb3e295c7d1e5708a5879188648371a1a8244be2403221622a953a70f22d412",
+        strip_prefix = "eqy-0.70",
+        build_file = "//dependency_support/eqy:bundled.BUILD.bazel",
+    )
+
+    # SBY
+    maybe(
+        http_archive,
+        name = "sby",
+        urls = ["https://github.com/YosysHQ/sby/archive/refs/tags/v0.70.tar.gz"],
+        sha256 = "f2a3614f4ca56180d5e650d48a510fc8c1359b4f81a971634a479feb171f363a",
+        strip_prefix = "sby-0.70",
+        build_file = "//dependency_support/sby:bundled.BUILD.bazel",
+    )
+
     # Yices, the default SMT solver of yosys-smtbmc.
     maybe(
         http_archive,
@@ -64,7 +84,7 @@ def _tools_extension_impl(module_ctx):
     )
 
     return module_ctx.extension_metadata(
-        root_module_direct_deps = ["at_clifford_yosys", "yices", "com_icarus_iverilog", "verilator", "net_lz4"],
+        root_module_direct_deps = ["at_clifford_yosys", "eqy", "sby", "yices", "com_icarus_iverilog", "verilator", "net_lz4"],
         root_module_direct_dev_deps = [],
     )
 

@@ -1,0 +1,67 @@
+# Copyright 2026 bazel_rules_hdl Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""EQY, the Yosys equivalence checking frontend.
+
+Plugins are built against @at_clifford_yosys so they match the yosys binary
+that loads them. eqy.py finds them next to itself (its "development" layout).
+"""
+
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("@rules_hdl_pip_deps_to_vendor//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_binary")
+
+licenses(["notice"])
+
+exports_files(["COPYING"])
+
+PLUGINS = [
+    "eqy_combine",
+    "eqy_partition",
+    "eqy_recode",
+]
+
+[cc_binary(
+    name = "src/%s.so" % plugin,
+    srcs = ["src/%s.cc" % plugin],
+    copts = [
+        "-std=c++20",
+        "-w",
+    ],
+    linkshared = True,
+    deps = ["@at_clifford_yosys//:kernel_headers"],
+) for plugin in PLUGINS]
+
+genrule(
+    name = "eqy_version",
+    srcs = [
+        ".gittag",
+        "src/eqy.py",
+    ],
+    outs = ["src/eqy_main.py"],
+    cmd = """sed "s/##yosys-release-version##/release_version = 'EQY $$(cat $(location .gittag))'/" $(location src/eqy.py) > $@""",
+)
+
+py_binary(
+    name = "eqy",
+    srcs = [
+        "src/eqy_job.py",
+        "src/eqy_main.py",
+    ],
+    data = ["src/%s.so" % plugin for plugin in PLUGINS] + ["@sby//:sby"],
+    imports = ["src"],
+    main = "src/eqy_main.py",
+    visibility = ["//visibility:public"],
+    deps = [requirement("click")],
+)

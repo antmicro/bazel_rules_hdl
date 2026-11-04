@@ -24,6 +24,7 @@ load("@bison//:bison.bzl", "bison")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("@rules_flex//flex:flex.bzl", "flex")
 load("@rules_hdl//dependency_support:copy.bzl", "copy")
+load("@rules_hdl_pip_deps_to_vendor//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_binary")
 
 licenses(["notice"])
@@ -181,8 +182,6 @@ cc_library(
     ] + [pmg.removesuffix(".pmg") + "_pm.h" for pmg in PMGEN_SRCS],
     hdrs = glob(
         [
-            "kernel/*.h",
-            "kernel/*.inc",
             "backends/**/*.h",
             "frontends/**/*.h",
             "passes/**/*.h",
@@ -195,16 +194,14 @@ cc_library(
             "backends/cxxrtl/runtime/**",
             "frontends/slang/**",
         ],
-    ) + ["kernel/yosys_config.h"],
+    ),
     copts = YOSYS_COPTS,
     defines = [
-        "_YOSYS_",
         "YOSYS_ENABLE_ABC",
         'ABCEXTERNAL=\\"abc\\"',
     ],
     features = ["-use_header_modules"],
     includes = [
-        ".",
         "libs",
         "libs/flex",
     ],
@@ -218,6 +215,7 @@ cc_library(
         ":ezsat",
         ":fst",
         ":json11",
+        ":kernel_headers",
         ":sha1",
         ":subcircuit",
         "@libffi",
@@ -228,12 +226,30 @@ cc_library(
     alwayslink = True,
 )
 
+# Header-only API for plugins. They must be loaded by :yosys, which exports
+# its symbols (-rdynamic).
+cc_library(
+    name = "kernel_headers",
+    hdrs = glob([
+        "kernel/*.h",
+        "kernel/*.inc",
+        "libs/ezsat/*.h",
+        "libs/fst/*.h",
+        "libs/json11/*.hpp",
+        "libs/minisat/*.h",
+    ]) + ["kernel/yosys_config.h"],
+    defines = ["_YOSYS_"],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
 cc_binary(
     name = "yosys",
     srcs = ["kernel/driver.cc"],
     copts = YOSYS_COPTS,
     data = [
         ":share_files",
+        ":yosys-smtbmc",
         "@abc//:abc_bin",
         "@tcl_lang//:tcl_core",
     ],
@@ -668,4 +684,29 @@ cc_library(
         "@zlib//:zlib",
     ],
     licenses = ["notice"],
+)
+
+py_binary(
+    name = "yosys-smtbmc",
+    srcs = [
+        "backends/smt2/smtbmc.py",
+        "backends/smt2/smtio.py",
+        "backends/smt2/ywio.py",
+    ],
+    imports = ["backends/smt2"],
+    main = "backends/smt2/smtbmc.py",
+    data = ["@yices//:yices-smt2"],
+    visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "yosys_witness",
+    srcs = [
+        "backends/smt2/witness.py",
+        "backends/smt2/ywio.py",
+    ],
+    imports = ["backends/smt2"],
+    main = "backends/smt2/witness.py",
+    visibility = ["//visibility:public"],
+    deps = [requirement("click")],
 )
