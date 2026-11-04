@@ -21,6 +21,16 @@ def _tools_extension_impl(module_ctx):
         ],
     )
 
+    # Yices, the default SMT solver of yosys-smtbmc.
+    maybe(
+        http_archive,
+        name = "yices",
+        urls = ["https://github.com/SRI-CSL/yices2/archive/refs/tags/yices-2.7.0.tar.gz"],
+        sha256 = "584db72abf6643927b2c3ba98ff793f602216b452b8ff2f34a8851d35904804a",
+        strip_prefix = "yices2-yices-2.7.0",
+        build_file = "//dependency_support/yices:bundled.BUILD.bazel",
+    )
+
     # Icarus Verilog
     maybe(
         http_archive,
@@ -54,7 +64,7 @@ def _tools_extension_impl(module_ctx):
     )
 
     return module_ctx.extension_metadata(
-        root_module_direct_deps = ["at_clifford_yosys", "com_icarus_iverilog", "verilator", "net_lz4"],
+        root_module_direct_deps = ["at_clifford_yosys", "yices", "com_icarus_iverilog", "verilator", "net_lz4"],
         root_module_direct_dev_deps = [],
     )
 

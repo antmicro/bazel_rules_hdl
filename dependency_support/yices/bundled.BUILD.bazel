@@ -1,0 +1,117 @@
+# Copyright 2026 bazel_rules_hdl Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Yices 2, the default SMT solver of yosys-smtbmc.
+
+Mirrors src/Makefile in release mode without MCSAT (the configure default).
+"""
+
+load("@bazel_skylib//rules:expand_template.bzl", "expand_template")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+licenses(["restricted"])  # GPLv3
+
+exports_files(["LICENSE.txt"])
+
+VERSION = "2.7.0"
+
+COPTS = [
+    "-fvisibility=hidden",
+    "-w",
+]
+
+expand_template(
+    name = "version",
+    out = "src/api/yices_version.c",
+    substitutions = {
+        "REVISION": "yices-" + VERSION,
+        "YICES_ARCH": "unknown",
+        "YICES_BUILD_MODE": "release",
+        "YICES_COMPILATION_DATE": "unknown",
+        "YICES_VERSION": VERSION,
+    },
+    template = "src/api/yices_version_template.txt",
+)
+
+# gperf keyword tables under src/frontend: output, input, extra flags.
+GPERF_TABLES = [
+    ("yices/yices_hash_keywords", "yices/yices_keywords", "-W yices_kw --lookup-function-name=in_yices_kw"),
+    ("smt1/smt_hash_keywords", "smt1/smt_keywords", "-W smt_kw --lookup-function-name=in_smt_kw"),
+    ("smt2/smt2_hash_tokens", "smt2/smt2_tokens", "-W smt2_tk -H hash_tk -E --lookup-function-name=in_smt2_tk"),
+    ("smt2/smt2_hash_keywords", "smt2/smt2_keywords", "-W smt2_kw -H hash_kw -E --lookup-function-name=in_smt2_kw"),
+    ("smt2/smt2_hash_symbols", "smt2/smt2_symbols", "-W smt2_sym -H hash_sym -E --lookup-function-name=in_smt2_sym"),
+]
+
+[genrule(
+    name = out.replace("/", "_"),
+    srcs = ["src/frontend/%s.txt" % src],
+    outs = ["src/frontend/%s.h" % out],
+    cmd = "$(location @gperf//:gperf) -C -L ANSI-C %s --output-file=$@ $<" % flags,
+    tools = ["@gperf"],
+) for out, src, flags in GPERF_TABLES]
+
+cc_library(
+    name = "libyices",
+    srcs = glob(
+        ["src/**/*.c"],
+        exclude = [
+            # Binaries.
+            "src/frontend/yices*.c",
+            # MCSAT needs libpoly; disabled as in the default configure.
+            "src/mcsat/**",
+            # Not part of the library.
+            "src/scratch/**",
+            "src/mt/threads.c",
+            "src/solvers/bv/bvbound_cache.c",
+            "src/solvers/egraph/egraph_eq_stats.c",
+            "src/terms/arith_buffer_terms.c",
+            # #included by their platform-independent wrapper.
+            "src/api/yices_error_report_*.c",
+            "src/mt/threads_*.c",
+            "src/mt/yices_locks_*.c",
+        ],
+    ) + [
+        "src/api/yices_version.c",
+        "src/mcsat/no_mcsat.c",
+        "src/mcsat/options.c",
+    ] + ["src/frontend/%s.h" % out for out, _, _ in GPERF_TABLES],
+    hdrs = glob(["src/**/*.h"]),
+    copts = COPTS,
+    includes = [
+        "src",
+        "src/include",
+    ],
+    local_defines = [
+        "NDEBUG",
+        "LINUX",
+    ],
+    textual_hdrs = glob([
+        "src/api/yices_error_report_*.c",
+        "src/mt/threads_*.c",
+        "src/mt/yices_locks_*.c",
+    ]),
+    deps = ["@gmp"],
+)
+
+cc_binary(
+    name = "yices-smt2",
+    srcs = ["src/frontend/yices_smt2.c"],
+    copts = COPTS,
+    local_defines = [
+        "NDEBUG",
+        "LINUX",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [":libyices"],
+)
