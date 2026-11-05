@@ -31,14 +31,15 @@ def _yosys_synth_file_step_impl(ctx):
     commands = [
         script_prefix,
         "# Use rlocation to find all necessary tools and files",
-        'YOSYS=$(rlocation "at_clifford_yosys/yosys")',
+        'YOSYS=$(rlocation "%s")' % get_rlocation_path(ctx, ctx.executable._yosys),
+        'TCL_INIT=$(rlocation "tcl_lang/library/init.tcl")',
+        'export TCL_LIBRARY="$(dirname "$TCL_INIT")"',
         'ABC_BIN=$(rlocation "abc/abc_bin")',
         'LIBERTY_FILE=$(rlocation "%s")' % get_rlocation_path(ctx, liberty),
-        'TCL_INIT=$(rlocation "tcl_lang/library/init.tcl")',
         'SYNTH_TCL=$(rlocation "%s")' % get_rlocation_path(ctx, synth_tcl),
         'export ABC="$ABC_BIN"',
         'export LIBERTY="$LIBERTY_FILE"',
-        'export TCL_LIBRARY=$(dirname "$TCL_INIT")',
+        'export PATH="$(dirname "$YOSYS"):$PATH"',
         "# Exec yosys using its resolved path",
         'exec "$YOSYS" -q -q -Q -T -c "$SYNTH_TCL" "$@"',
     ]
