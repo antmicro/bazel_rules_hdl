@@ -59,6 +59,7 @@ def benchmark(ctx, open_road_info):
 
     if ctx.attr.create_die_shot:
         image_file = ctx.actions.declare_file(ctx.label.name + "_die.png")
+        # Evaluate options to reduce area of rendering
         open_road_commands.append("save_image -width 2048 {out}".format(out = image_file.path))
         cmd_outputs.append(image_file)
 
