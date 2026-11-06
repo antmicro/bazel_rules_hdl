@@ -72,8 +72,6 @@ def make_verilog_info(
     Args:
       new_entries: list of DAG entries (from 'make_dag_entry') to add to the DAG
       old_infos: list of VerilogInfo that hold other parts of the DAG
-      # plis: Verilog PLI/VPI files.
-      # dpis: Verilog DPI files.
     Returns:
       VerilogInfo that combines all the DAGs together.
     """

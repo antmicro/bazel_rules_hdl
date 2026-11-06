@@ -445,6 +445,14 @@ def verilator_build_binary(
     cc_toolchain = find_cpp_toolchain(ctx)
     cc_feature_configuration = _cc_configure_features(ctx, cc_toolchain)
 
+    pli_srcs = []
+    pli_hdrs = []
+
+    for dag in depset([], transitive = verilog_dags).to_list():
+        for pli in dag.plis:
+            pli_srcs.append(pli.srcs)
+            pli_hdrs.append(pli.hdrs)
+
     verilator_output, design_runfiles = verilator_generate_cc(
         ctx,
         verilator_toolchain,

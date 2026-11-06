@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Providers for PLI libraries"""
+"""Providers for PLI, VPI and DPI libraries"""
 
 PliInfo = provider(
-    doc = "A PLI library info",
+    doc = "A PLI, VPI or DPI library info",
     fields = {
-        "deps": "Additional dependencies",
-        "libs": "Library files",
-        "tabs": "PLI .tab files",
+        "hdrs": "Header files",
+        "srcs": "Source files",
     },
 )
 
@@ -28,31 +27,24 @@ def _pli_library_impl(ctx):
     Constructs a PliInfo provider.
     """
 
-    pli_info = PliInfo(
-        libs = depset(direct = ctx.files.libs),
-        tabs = depset(direct = ctx.files.tabs),
-        deps = ctx.files.deps,
-    )
-
     return [
-        pli_info,
+        PliInfo(
+            srcs = depset(direct = ctx.files.srcs),
+            hdrs = depset(direct = ctx.files.hdrs),
+        ),
     ]
 
 pli_library = rule(
-    doc = "Define a PLI library",
+    doc = "Define a PLI, VPI or DPI library",
     implementation = _pli_library_impl,
     attrs = {
-        "deps": attr.label_list(
-            doc = "Other dependencies",
+        "hdrs": attr.label_list(
+            doc = "Header files",
             allow_files = True,
         ),
-        "libs": attr.label_list(
-            doc = "Library files",
-            allow_files = [".a", ".so"],  # TODO: Possibly add non-Linux extensions
-        ),
-        "tabs": attr.label_list(
-            doc = "PLI .tab files",
-            allow_files = [".tab"],
+        "srcs": attr.label_list(
+            doc = "Source files",
+            allow_files = True,
         ),
     },
 )
