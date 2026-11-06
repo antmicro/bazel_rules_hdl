@@ -176,7 +176,7 @@ def cc_compile(ctx, cc_toolchain, cc_feature_configuration, prefix, verilator_ou
         srcs = depset([verilated_cpp], transitive = extra_srcs).to_list(),
         public_hdrs = depset(transitive = extra_hdrs).to_list(),
         includes = precompiled_includes + includes,
-        defines = defines,
+        defines = defines + ["VERILATOR"],
         additional_inputs = precompiled_files,
         compilation_contexts = compilation_contexts,
     )
