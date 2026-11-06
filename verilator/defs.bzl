@@ -28,7 +28,6 @@ load("providers.bzl", "RawCoverageInfo", "VerilatedBinaryInfo")
 VERILATOR_PCH_SUFFIX = "__pch.h"
 PCH_GCC_FLAGS = [
     "-fpch-deps",
-    "-Winvalid-pch",
 ]
 
 # The functions generates a precompiled header from a given header
