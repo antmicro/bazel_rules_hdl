@@ -354,11 +354,7 @@ cc_library(
 
 cc_library(
     name = "vltstd",
-    hdrs = [
-        "include/vltstd/sv_vpi_user.h",
-        "include/vltstd/svdpi.h",
-        "include/vltstd/vpi_user.h",
-    ],
+    hdrs = glob(["include/vltstd/*.h"]),
     strip_include_prefix = "include/vltstd",
 )
 
