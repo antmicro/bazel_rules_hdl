@@ -112,7 +112,7 @@ def _cc_configure_features(ctx, toolchain):
         unsupported_features = ctx.disabled_features,
     )
 
-def cc_compile(ctx, cc_toolchain, cc_feature_configuration, prefix, verilator_output, deps, extra_srcs = [], includes = [], defines = []):
+def cc_compile(ctx, cc_toolchain, cc_feature_configuration, prefix, verilator_output, deps, extra_srcs = [], extra_hdrs = [], includes = [], defines = []):
     """Compile C++ sources
 
     Args:
@@ -122,7 +122,8 @@ def cc_compile(ctx, cc_toolchain, cc_feature_configuration, prefix, verilator_ou
         prefix: The prefix passed to Verilator.
         verilator_output: The Verilated files, mostly C++ and header files.
         deps: The additional C and C++ dependencies.
-        extra_srcs: The additional C++ sources.
+        extra_srcs: The additional C++ sources (list of depsets).
+        extra_hdrs: The additional C++ headers (list of depsets).
         includes: The includes for the verilator module to build.
         defines: Cpp defines to build with.
     Returns:
@@ -172,7 +173,8 @@ def cc_compile(ctx, cc_toolchain, cc_feature_configuration, prefix, verilator_ou
         feature_configuration = cc_feature_configuration,
         cc_toolchain = cc_toolchain,
         user_compile_flags = _VERILATOR_DEFAULT_COPTS + precompiled_flags + ctx.attr.copts,
-        srcs = extra_srcs + [verilated_cpp],
+        srcs = depset([verilated_cpp], transitive = extra_srcs).to_list(),
+        public_hdrs = depset(transitive = extra_hdrs).to_list(),
         includes = precompiled_includes + includes,
         defines = defines,
         additional_inputs = precompiled_files,
@@ -405,9 +407,8 @@ def verilator_generate_cc(ctx, verilator_toolchain, verilog_dags, module_top, pr
         env = env,
     )
 
-    output = depset([verilator_output], transitive = [verilator_toolchain.shared[DefaultInfo].files])
-
-    return output, runfiles
+    output_depset = depset([verilator_output], transitive = [verilator_toolchain.shared[DefaultInfo].files])
+    return output_depset, runfiles
 
 def verilator_build_binary(
         ctx,
@@ -415,6 +416,7 @@ def verilator_build_binary(
         module_top,
         prefix,
         extra_srcs = [],
+        extra_hdrs = [],
         extra_deps = [],
         extra_runfiles = [],
         trace = "none",
@@ -428,7 +430,8 @@ def verilator_build_binary(
       ctx: Rule context used to declare the generation and linking actions.
       verilog_dags: Verilog dependency DAGs containing the design sources.
       module_top: Name of the top-level Verilog module.
-      extra_srcs: Additional C++ sources to compile into the executable.
+      extra_srcs: Additional C++ sources to compile into the executable (list of files).
+      extra_hdrs: additional C++ headers to compile into the executable (list of files).
       extra_deps: Additional C++ dependencies to link into the executable.
       extra_runfiles: Additional files required by the executable at runtime.
       trace: Waveform format (`none`, `vcd`, or `fst`).
@@ -473,7 +476,8 @@ def verilator_build_binary(
         cc_feature_configuration,
         prefix = prefix,
         verilator_output = verilator_output,
-        extra_srcs = extra_srcs,
+        extra_srcs = [depset(extra_srcs, transitive = pli_srcs)],
+        extra_hdrs = [depset(extra_hdrs, transitive = pli_hdrs)],
         deps = deps,
         defines = defines,
     )
