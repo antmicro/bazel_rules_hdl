@@ -791,6 +791,7 @@ verilator_preprocess = rule(
 )
 
 def _verilator_run(ctx):
+    verilator_toolchain = ctx.toolchains["@rules_hdl//verilator:toolchain_type"]
     result = []
     args = []
     outputs = list(ctx.outputs.outs)
@@ -836,16 +837,16 @@ def _verilator_run(ctx):
 
     # Target runfiles
     runfiles = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()
-    runfiles = runfiles + ctx.attr._smt_solver[DefaultInfo].default_runfiles.files.to_list()
+    runfiles = runfiles + verilator_toolchain.smt_solver_runfiles.files.to_list()
 
     # Run
     ctx.actions.run(
         outputs = outputs,
         inputs = runfiles,
-        tools = [ctx.executable._run_wrapper, ctx.executable._smt_solver],
+        tools = [ctx.executable._run_wrapper, verilator_toolchain.smt_solver],
         executable = ctx.executable._run_wrapper,
         env = {
-            "Z3_DIR": ctx.executable._smt_solver.dirname,
+            "Z3_DIR": verilator_toolchain.smt_solver.dirname,
         },
         arguments = args,
         mnemonic = "RunVerilatedBinary",
@@ -887,16 +888,13 @@ verilator_run = rule(
             executable = True,
             default = Label("//verilator/private:verilator_run_wrapper"),
         ),
-        "_smt_solver": attr.label(
-            doc = "SMT solver for constrained randomization",
-            cfg = "exec",
-            executable = True,
-            default = Label(":z3"),
-        ),
     },
     provides = [
         DefaultInfo,
         LogInfo,
+    ],
+    toolchains = [
+        "//verilator:toolchain_type",
     ],
 )
 
@@ -996,6 +994,8 @@ def _verilator_toolchain_impl(ctx):
         deps = ctx.attr.deps,
         extra_vopts = ctx.attr.extra_vopts,
         all_files = all_files,
+        smt_solver = ctx.executable.smt_solver,
+        smt_solver_runfiles = ctx.attr.smt_solver[DefaultInfo].default_runfiles,
         _avoid_nondeterministic_outputs = ctx.attr.avoid_nondeterministic_outputs[BuildSettingInfo].value,
     )]
 
@@ -1020,6 +1020,12 @@ verilator_toolchain = rule(
         "shared": attr.label(
             doc = "Verilator shared files",
             mandatory = True,
+        ),
+        "smt_solver": attr.label(
+            doc = "SMT solver for constrained randomization in verilated binaries.",
+            executable = True,
+            cfg = "exec",
+            default = Label(":z3"),
         ),
         "verilator": attr.label(
             doc = "The Verilator binary.",
