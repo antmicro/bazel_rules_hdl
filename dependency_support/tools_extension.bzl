@@ -16,8 +16,11 @@ def _tools_extension_impl(module_ctx):
         build_file = "//dependency_support/at_clifford_yosys:bundled.BUILD.bazel",
         # Submodules ship their own Bazel files, which would split packages
         # and pull in deps we don't have.
+        # Need to switch mp calls to support TCL9, yosys using an older version
         patch_cmds = [
             "find libs frontends -mindepth 2 \\( -name BUILD.bazel -o -name MODULE.bazel -o -name WORKSPACE \\) -delete",
+            "sed -i 's/mp_unsigned_bin_size(a)/mp_ubin_size(a)/; s/mp_to_unsigned_bin(a, buf.data())/mp_to_ubin(a, buf.data(), buf.size(), nullptr)/' kernel/tclapi.cc",
+            "! grep -n 'unsigned_bin' kernel/tclapi.cc",
         ],
     )
 

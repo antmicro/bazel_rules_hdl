@@ -318,6 +318,7 @@ cc_binary(
         "vvp/*.cc",
         "vvp/*.h",
     ]) + [
+        ":config_h",
         "ivl_alloc.h",
         "sv_vpi_user.h",
         "version_base.h",
