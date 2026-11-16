@@ -15,7 +15,7 @@
 """These build rules run automated place and route on a synthesized netlist"""
 
 load("//pdk:open_road_configuration.bzl", "assert_has_open_road_configuration")
-load("//place_and_route:open_road.bzl", "OpenRoadInfo")
+load("//place_and_route:open_road.bzl", "OpenRoadInfo", "openroad_command")
 load("//place_and_route:private/benchmark.bzl", "benchmark")
 load("//place_and_route:private/clock_tree_synthesis.bzl", "clock_tree_synthesis")
 load("//place_and_route:private/detailed_routing.bzl", "detailed_routing")
@@ -41,19 +41,84 @@ PLACE_AND_ROUTE_STEPS = [
     ("detailed_routing", detailed_routing, "post_detailed_route"),
 ]
 
+CustomScriptInfo = provider(
+    fields = ["script", "post_step", "inputs", "outputs"],
+)
+
+def _custom_openroad_script_impl(ctx):
+    return [CustomScriptInfo(
+        script = ctx.expand_location(ctx.attr.script, ctx.attr.inputs),
+        post_step = ctx.attr.post_step,
+        inputs = ctx.files.inputs,
+        outputs = ctx.attr.outputs,
+    )]
+
+custom_openroad_script_rule = rule(
+    implementation = _custom_openroad_script_impl,
+    attrs = {
+        "post_step": attr.string(
+            doc = "After which flow step this script should be executed",
+            values = [step[0] for step in PLACE_AND_ROUTE_STEPS],
+        ),
+        "script": attr.string(
+            mandatory = True,
+            doc = "The TCL command script to be executed by openroad",
+        ),
+        "inputs": attr.label_list(
+            allow_files = True,
+            doc = "Inputs that can be used in the script using $(location ...) expansion",
+        ),
+        "outputs": attr.string_list(
+            doc = """Outputs of the script. They can't be expanded with $(location ...) so
+            instead the paths are put into TCL variables. For example, an output from
+            `outputs = ["photo.png"]` can be accessed inside the TCL script as `${photo.png}`
+            """,
+        ),
+    },
+)
+
+def custom_openroad_script(name, **kwargs):
+    custom_openroad_script_rule(name = name, **kwargs)
+    return ":" + name
+
 def _place_and_route_impl(ctx):
     # Throws an error if there is no OpenROAD configuration
     assert_has_open_road_configuration(ctx.attr.synthesized_rtl[SynthesisInfo])
 
     output_files = []
     open_road_provider = None
+    last_step = ctx.attr.stop_after_step or PLACE_AND_ROUTE_STEPS[-1][0]
     for step_name, impl, export_def_name in PLACE_AND_ROUTE_STEPS:
         open_road_provider = impl(ctx) if step_name == "init_floor_plan" else impl(ctx, open_road_provider)
         if export_def_name != "":
             open_road_provider, output_def = export_def(ctx, open_road_provider, export_def_name)
             output_files.append(output_def)
-        if step_name == ctx.attr.stop_after_step:
+
+        for custom_script in ctx.attr.custom_post_step_scripts:
+            cs = custom_script[CustomScriptInfo]
+            if not cs.post_step and step_name != last_step or step_name != cs.post_step:
+                continue
+            script = cs.script
+            outs = []
+            for o in cs.outputs:
+                f = ctx.actions.declare_file(o)
+                outs.append(f)
+                output_files.append(f)
+                script = "set {%s} {%s}\n" % (o, f.path) + script
+
+            openroad_command(
+                ctx,
+                commands = [script],
+                input_db = open_road_provider.output_db,
+                step_name = custom_script.label.name,
+                inputs = cs.inputs + [],
+                outputs = outs,
+                write_db = False,
+            )
+
+        if step_name == last_step:
             break
+
     open_road_provider = benchmark(ctx, open_road_provider)
 
     output_files.append(open_road_provider.output_db)
@@ -99,7 +164,13 @@ place_and_route = rule(
         ),
         "create_die_shot": attr.bool(
             default = False,
-            doc = "Exports a die shot image of the design. This requires qt support.",
+            doc = """Exports a die shot image of the design after the last executed step. This requires qt support.
+                     It uses default visibility settings of the `save_image` command. For customizability use
+                     `custom_post_step_scripts` instead of this flag.""",
+        ),
+        "custom_post_step_scripts": attr.label_list(
+            doc = "Custom TCL scripts to run post each flow step",
+            providers = [CustomScriptInfo],
         ),
         "density_fill_config": attr.label(
             allow_single_file = True,

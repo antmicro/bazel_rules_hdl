@@ -183,7 +183,7 @@ def merge_open_road_info(left, right):
         report_json = depset([], transitive = [left.report_json, right.report_json]),
     )
 
-def openroad_command(ctx, commands, input_db = None, step_name = None, inputs = [], outputs = [], execution_requirements = {}):
+def openroad_command(ctx, commands, input_db = None, step_name = None, inputs = [], outputs = [], execution_requirements = {}, write_db = True):
     """Runs the openroad binary on a command script.
 
     This function will insert write_db commands at the end of execution by default.
@@ -200,18 +200,18 @@ def openroad_command(ctx, commands, input_db = None, step_name = None, inputs = 
         input_db: An OpenDB bazel File that will be read as the first action of openroad
         step_name: gives this step a name and all output files are prefixed with this step_name
         inputs: A list of all files that are required by your commands. It does not need to include the input_db file.
-        outputs: openroad command outpus
+        outputs: openroad command outputs
         execution_requirements: the remote executor tags.
+        write_db: whether to create the output_db or not
     """
 
     input_hash = hash(" ".join([file.path for file in inputs]))
     command_hash = hash("\n".join(commands))
 
     output_db = None
-    if step_name:
-        output_db = ctx.actions.declare_file("{}__{}.odb".format(ctx.attr.name, step_name))
-    else:
-        output_db = ctx.actions.declare_file("{}{}.odb".format(input_hash, command_hash))
+    prefix = "{}__{}".format(ctx.attr.name, step_name) if step_name else "{}{}".format(input_hash, command_hash)
+    if write_db:
+        output_db = ctx.actions.declare_file(prefix + ".odb")
 
     real_commands = []
 
@@ -245,25 +245,31 @@ def openroad_command(ctx, commands, input_db = None, step_name = None, inputs = 
         real_commands.extend(timing_setup_command_struct.commands)
 
     real_commands.extend(commands)
-    real_commands.append("write_db {}".format(output_db.path))
+    if write_db:
+        real_commands.append("write_db {}".format(output_db.path))
 
-    file_name = "{}_script.tcl".format(output_db.basename[:-(len(output_db.extension) + 1)])
-    command_file = ctx.actions.declare_file(file_name)
+    log_file = ctx.actions.declare_file(prefix + ".log")
+    command_file = ctx.actions.declare_file(prefix + "_script.tcl")
+    metrics_file = ctx.actions.declare_file(prefix + ".metrics.json")
     ctx.actions.write(command_file, content = "\n".join(real_commands))
 
-    log_file = ctx.actions.declare_file(
-        "{}.log".format(
-            output_db.basename[:-(len(output_db.extension) + 1)],
-        ),
-    )
-    metrics_file = ctx.actions.declare_file(
-        "{}.metrics.json".format(
-            output_db.basename[:-(len(output_db.extension) + 1)],
-        ),
-    )
+    run_outputs = []
+    if write_db:
+        run_outputs.append(output_db)
+    run_outputs.extend([log_file, metrics_file])
+    run_outputs.extend(outputs)
+
+    env = {
+        "DEFAULT_INPUT_DRIVER_CELL": stdcell_info.default_input_driver_cell,
+        "DEFAULT_OUTPUT_LOAD": stdcell_info.default_output_load,
+        "QT_QPA_PLATFORM": ctx.attr.qt_qpa_platform,
+    }
+
+    if ctx.attr.qt_qpa_platform == "offscreen":
+        env["QT_QPA_OFFSCREEN_SCREEN_SIZE"] = "8000x8000"
 
     ctx.actions.run(
-        outputs = [output_db, log_file, metrics_file] + outputs,
+        outputs = run_outputs,
         inputs = inputs + [command_file] + input_db_dependency,
         arguments = [
             "-no_init",
@@ -278,11 +284,7 @@ def openroad_command(ctx, commands, input_db = None, step_name = None, inputs = 
             command_file.path,
         ],
         executable = ctx.executable._openroad,
-        env = {
-            "DEFAULT_INPUT_DRIVER_CELL": stdcell_info.default_input_driver_cell,
-            "DEFAULT_OUTPUT_LOAD": stdcell_info.default_output_load,
-            "QT_QPA_PLATFORM": ctx.attr.qt_qpa_platform,
-        },
+        env = env,
         execution_requirements = execution_requirements,
         mnemonic = "OpenROAD",
         toolchain = None,
