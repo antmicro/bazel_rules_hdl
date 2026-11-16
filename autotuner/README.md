@@ -156,7 +156,10 @@ At the end of an experiment, the resulting JSON report is read back, metrics ext
 * At least some of the algorithms like optuna and hyperopt could support conditional search space (x,y [0.10] with x > y), how to implement such a feature is TBD
 * Logic around server/port arguments is untested
 * The tensorboard GUI may be broken, but also likely unaccessible as it would be running inside the docker container
-* The script has been ported from python3.10 to python3.12 which is the last version that does not require some dependency updates. Would be useful to align its python version to the main bazel_rules_hdl version
+* The generation on-the-fly of BUILD files is not a properly-supported bazel workflow. An alternative approach would be welcome, but has to fullfill 2 fundamental requirements:
+  1) Reuse of the `bazel_rules_hdl` synthesize_rtl and place_and_route targets
+  2) Keep Ray's orchestration working
+  3) Search algorithms must be able to generate their results based on previous experiments
 
 ### Algorithm managements
 The different algorithms are not consistent in how they treat parameter search spaces, the functionality they exposes and so on...
