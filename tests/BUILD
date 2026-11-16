@@ -17,7 +17,7 @@ load("//dependency_support/com_google_skywater_pdk:cells_info.bzl", "for_each_sk
 load("//dependency_support/org_theopenroadproject_asap7_pdk_r1p7:cells_info.bzl", "for_each_asap7_cells")
 load("//flows:basic_asic.bzl", "basic_asic_flow")
 load("//gds_write:build_defs.bzl", "gds_write")
-load("//place_and_route:build_defs.bzl", "place_and_route")
+load("//place_and_route:build_defs.bzl", "custom_openroad_script", "place_and_route")
 load("//sby:defs.bzl", "sby_formal")
 load("//static_timing:build_defs.bzl", "run_opensta")
 load("//synthesis:defs.bzl", "sdc_library", "synthesize_rtl")
@@ -121,6 +121,19 @@ place_and_route(
     name = "verilog_counter-place_and_route",
     clock_period = "10",
     core_padding_microns = 20,
+    # Example usage of a custom OpenRoad post script
+    custom_post_step_scripts = [custom_openroad_script(
+        "get_cells",
+        outputs = ["cell_report.txt"],
+        post_step = "global_placement",
+        script = """
+            set out [open ${cell_report.txt} w]
+            set cells [get_lib_cells]
+            foreach {cell} $cells { puts $out [get_property $cell base_name] }
+            close $out
+            puts "Found [llength $cells] cells."
+        """,
+    )],
     die_height_microns = 200,
     die_width_microns = 200,
     placement_density = "0.7",
