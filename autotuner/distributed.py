@@ -286,7 +286,7 @@ def parse_arguments():
         "--stop_after_step",
         type=str,
         metavar="<str>",
-        choices=["floorplan", "global_routing", "detailed_routing"],
+        choices=["synthesis", "floorplan", "global_placement", "global_routing", "detailed_routing"],
         default="detailed_routing",
         help="Name of the stage to stop after. Default is finish.",
     )

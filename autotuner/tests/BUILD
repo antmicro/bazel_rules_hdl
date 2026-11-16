@@ -107,6 +107,7 @@ run_autotuner_tune(
     perturbation = 2,
     samples = 4,
     sdc = ":constraint",
+    stop_after_step = "synthesis",
     top = "lfsr",
     deps = [
         ":lfsr",

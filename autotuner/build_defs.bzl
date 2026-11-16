@@ -55,7 +55,7 @@ def run_autotuner_tune(
         ppa_coeff: coefficient to override default values of Performance, Power, Area. Given as integer triplet "performance,power,area"
         sdc: sdc file for the design.
         samples: Number of samples per iteration.
-        stop_after_step: Stop step: detailed_routing(default), global_routing
+        stop_after_step: Stop step: detailed_routing(default), global_routing, global_placement, floorplan, synthesis
         synth_tcl: custom script for synthesis
         synth_additional_args: extra parameters for synthesis
         iterations: Number of successive iterations.

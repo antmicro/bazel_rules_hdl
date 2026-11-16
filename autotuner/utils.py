@@ -138,6 +138,8 @@ METRIC_KEYS = (
 )
 
 VALID_STAGES = (
+    "synthesis",
+    "global_placement",
     "detailed_routing",
     "global_routing",
     "floorplan",
@@ -150,7 +152,7 @@ def read_metrics(reports_dict, stop_after_step="detailed_routing", fake=False):
     cannot be trusted, every value is "ERR", which the evaluate functions
     already turn into a failed trial.
  
-    stop_after_step: Last step run. Valid values are: detailed_routing(default), global_routing
+    stop_after_step: Last step run. detailed_routing as default
     """
     if fake:
         return {
@@ -161,6 +163,11 @@ def read_metrics(reports_dict, stop_after_step="detailed_routing", fake=False):
             "die_area": 123.4,
             "num_drc": 0,
         }
+    # global_plaement does not have dedicated report, take the previous results instead
+    # TODO: Remove once global placement has dedicated report
+    if stop_after_step == "global_placement":
+        stop_after_step = "floorplan"
+
     if stop_after_step not in VALID_STAGES:
         print("ERROR: stop_after_step not a valid values: %s" % stop_after_step)
         sys.exit(1)
@@ -185,9 +192,14 @@ def read_metrics(reports_dict, stop_after_step="detailed_routing", fake=False):
     if (worst_slack < 0.0):
         print("ERROR: worst slack must be a positive number, 0.0 is no violation")
         sys.exit(1)
-    total_power = data["power"]["Total"]["total"]
-    total_area = data["area"]["design_area"]
-    utilization = data["area"]["utilization"]
+    if stop_after_step == "synthesis":
+        total_power = 1.0
+        total_area = data["design"]["area"]
+        utilization = 1.0
+    else:
+        total_power = data["power"]["Total"]["total"]
+        total_area = data["area"]["design_area"]
+        utilization = data["area"]["utilization"]
     if stop_after_step == "detailed_routing":
         num_drc = data["drc"]["count"]
     else:

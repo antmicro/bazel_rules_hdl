@@ -102,6 +102,9 @@ def render_build(rules_hdl_repo, cells, top, sdc, deps, params, stop_after_step=
     # Compensate some inconstitency in naming
     if stop_after_step == "floorplan":
         attrs["place_and_route"]["stop_after_step"] = "init_floor_plan"
+    # If synthesis only, no PnR should run, we just inject a legal value
+    elif stop_after_step == "synthesis":
+        attrs["place_and_route"]["stop_after_step"] = "init_floor_plan"
     else:
         attrs["place_and_route"]["stop_after_step"] = stop_after_step
     if synth_tcl is not None:
@@ -212,7 +215,10 @@ class BazelFlow:
         if rel.startswith(".."):
             raise ValueError("{} is outside the workspace_root {}".format(
                 experiment_dir, self.workspace_root))
-        label = "//{}:pnr".format(rel)
+        if stop_after_step == "synthesis":
+            label = "//{}:synth".format(rel)
+        else:
+            label = "//{}:pnr".format(rel)
         log_path = os.path.join(experiment_dir, "bazel.log")
 
         with self._slot() as slot:
@@ -277,7 +283,7 @@ class BazelFlow:
                 reports[match.group("step")] = shutil.copy(source, results_dir)
             elif name.endswith("_synthesis_report.json"):
                 os.makedirs(results_dir, exist_ok=True)
-                reports["synthesis"] = shutil.copy(source, result_dir)
+                reports["synthesis"] = shutil.copy(source, results_dir)
             elif save_logs and name.endswith(".log"):
                 logs_dir = os.path.join(experiment_dir, "logs")
                 os.makedirs(logs_dir, exist_ok=True)
