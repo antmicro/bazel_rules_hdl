@@ -34,7 +34,7 @@ def sim_build(
         top: name of the top module
         name: base name for generated simulation targets; defaults to the module name
         simulators: simulator (verilator)
-        trace: waveform format (`none`, `vcd`, or `fst`)
+        trace: waveform format (`none`, `saif`, `vcd`, or `fst`)
         extra_verilator_args: extra compilation options for Verilator
         extra_bazel_tags: extra tags to be placed for bazel target definition
         coverage: types of coverage to collect
@@ -46,8 +46,8 @@ def sim_build(
     if (name == None):
         name = module.name
 
-    if trace not in ["none", "vcd", "fst"]:
-        fail("Unsupported trace format '{}'; expected 'none', 'vcd', or 'fst'".format(trace))
+    if trace not in ["none", "saif", "vcd", "fst"]:
+        fail("Unsupported trace format '{}'; expected 'none', 'saif', 'vcd', or 'fst'".format(trace))
 
     # Verilator
     if "verilator" in simulators:
@@ -73,6 +73,7 @@ def sim_run(
         simulators = ["verilator"],
         name = None,
         extra_verilator_args = [],
+        extra_run_data = [],
         extra_bazel_tags = []):
     """Generate rules for running a simulation.
 
@@ -82,6 +83,7 @@ def sim_run(
         simulators: simulator (verilator)
         name: base name for generated simulation targets; defaults to the module name
         extra_verilator_args: extra runtime options for Verilator
+        extra_run_data: extra run files for Verilator (i.e runtime files that must not be compiled)
         extra_bazel_tags: extra tags to be placed for bazel target definition
     """
 
@@ -99,6 +101,7 @@ def sim_run(
         verilator_run(
             name = name + suffix + "_verilator_run",
             binary = name + "_verilator_bin",
+            data = extra_run_data,
             visibility = [
                 "//visibility:public",
             ],
@@ -123,6 +126,7 @@ def sim_genrules(
         trace = "none",
         extra_verilator_run_args = [],
         extra_verilator_binary_vopts = [],
+        extra_verilator_run_data = [],
         extra_bazel_tags = [],
         coverage = _DEFAULT_COVERAGE):
     """Generate rules for simulations.
@@ -132,9 +136,10 @@ def sim_genrules(
         top: name of the top module
         simulators: simulator (verilator)
         name: base name for generated simulation targets; defaults to the module name
-        trace: waveform format (`none`, `vcd`, or `fst`)
+        trace: waveform format (`none`, `saif`, `vcd`, or `fst`)
         extra_verilator_run_args: extra runtime options for Verilator
         extra_verilator_binary_vopts: extra compilation options for Verilator
+        extra_verilator_run_data: extra runtime files needed
         extra_bazel_tags: extra tags to be placed for bazel target definition
         coverage: types of coverage to collect
     """
@@ -163,6 +168,7 @@ def sim_genrules(
         simulators = simulators,
         name = name,
         extra_verilator_args = extra_verilator_run_args,
+        extra_run_data = extra_verilator_run_data,
         extra_bazel_tags = extra_bazel_tags,
     )
 

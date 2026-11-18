@@ -19,6 +19,7 @@ WaveformInfo = provider(
     fields = {
         "fsdb_files": "FSDB waveform files",
         "fst_files": "FST waveform files",
+        "saif_files": "SAIF waveform files",
         "vcd_files": "VCD waveform files",
         "vpd_files": "VPD waveform files",
     },

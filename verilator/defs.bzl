@@ -272,6 +272,25 @@ def _only_hpp(f):
         return f.path
     return None
 
+# Verilator flag selecting the trace writer. A bare "--trace" also means VCD.
+_TRACE_VOPTS = {
+    "fst": ["--trace-fst"],
+    "saif": ["--trace-saif"],
+    "vcd": ["--trace"],
+}
+
+def _trace_defines(ctx):
+    """C++ defines matching the VM_TRACE* macros that verilated.mk passes."""
+    fmt = ctx.attr.trace
+    if fmt == "none":
+        return []
+    return [
+        "VM_TRACE=1",
+        "VM_TRACE_VCD=%d" % (1 if fmt == "vcd" else 0),
+        "VM_TRACE_FST=%d" % (1 if fmt == "fst" else 0),
+        "VM_TRACE_SAIF=%d" % (1 if fmt == "saif" else 0),
+    ]
+
 def _verilator_prefix(module_top):
     return "V" + module_top
 
@@ -348,7 +367,7 @@ def verilator_generate_cc(ctx, verilator_toolchain, verilog_dags, module_top, pr
       verilator_toolchain: The toolchain used to verilate.
       verilog_dags: Verilog dependency DAGs containing the design sources.
       module_top: Name of the top-level Verilog module.
-      trace: Waveform format (`none`, `vcd`, or `fst`).
+      trace: Waveform format (`none`, `saif`, `vcd`, or `fst`).
       coverage: Coverage instrumentation mode.
       opts: Verilator options controlled by the calling rule.
       user_vopts: Additional Verilator options supplied by the user.
@@ -371,10 +390,10 @@ def verilator_generate_cc(ctx, verilator_toolchain, verilog_dags, module_top, pr
     vopts.extend(["--top-module", module_top])
     vopts.extend(["--prefix", prefix])
 
-    if trace not in ["none", "vcd", "fst"]:
-        fail("Unsupported trace format '{}'; expected 'none', 'vcd', or 'fst'".format(trace))
+    if trace not in ["none", "saif", "vcd", "fst"]:
+        fail("Unsupported trace format '{}'; expected 'none', 'saif', 'vcd', or 'fst'".format(trace))
     if trace != "none":
-        vopts.append("--trace-{}".format(trace))
+        vopts.extend(_TRACE_VOPTS[trace])
 
     if coverage == "all":
         vopts.extend(["--coverage"])
@@ -434,7 +453,7 @@ def verilator_build_binary(
       extra_hdrs: additional C++ headers to compile into the executable (list of files).
       extra_deps: Additional C++ dependencies to link into the executable.
       extra_runfiles: Additional files required by the executable at runtime.
-      trace: Waveform format (`none`, `vcd`, or `fst`).
+      trace: Waveform format (`none`, `saif`, `vcd`, or `fst`).
       coverage: Coverage instrumentation mode.
       opts: Verilator options controlled by the calling rule.
       user_vopts: Additional Verilator options supplied by the user.
@@ -455,6 +474,12 @@ def verilator_build_binary(
         for pli in dag.plis:
             pli_srcs.append(pli.srcs)
             pli_hdrs.append(pli.hdrs)
+
+    # DPI/PLI sources include their declared headers. Add those header
+    # directories to the C++ compilation context automatically.
+    pli_include_dirs = depset(
+        direct = [header.dirname for hdrs in pli_hdrs for header in hdrs.to_list()],
+    ).to_list()
 
     verilator_output, design_runfiles = verilator_generate_cc(
         ctx,
@@ -478,6 +503,7 @@ def verilator_build_binary(
         verilator_output = verilator_output,
         extra_srcs = [depset(extra_srcs, transitive = pli_srcs)],
         extra_hdrs = [depset(extra_hdrs, transitive = pli_hdrs)],
+        includes = pli_include_dirs,
         deps = deps,
         defines = defines,
     )
@@ -528,7 +554,7 @@ def _verilator_cc_library(ctx):
     )
 
     # Do actual compile
-    defines = ["VM_TRACE"] if ctx.attr.trace != "none" else []
+    defines = _trace_defines(ctx)
 
     cc_compilation_context, compilation_outputs = cc_compile(
         ctx,
@@ -571,9 +597,9 @@ verilator_cc_library = rule(
             mandatory = True,
         ),
         "trace": attr.string(
-            doc = "Waveform format (`none`, `vcd`, or `fst`)",
+            doc = "Waveform format (`none`, `saif`, `vcd`, or `fst`)",
             default = "none",
-            values = ["none", "vcd", "fst"],
+            values = ["none", "saif", "vcd", "fst"],
         ),
         "vopts": attr.string_list(
             doc = "Additional command line options to pass to Verilator",
@@ -643,7 +669,7 @@ z3_executable = rule(
 )
 
 def _verilator_cc_binary(ctx):
-    defines = ["VM_TRACE"] if ctx.attr.trace != "none" else []
+    defines = _trace_defines(ctx)
     if ctx.attr.coverage != "none":
         defines.append("VM_COVERAGE")
 
@@ -685,9 +711,9 @@ verilator_cc_binary = rule(
             mandatory = True,
         ),
         "trace": attr.string(
-            doc = "Waveform format (`none`, `vcd`, or `fst`)",
+            doc = "Waveform format (`none`, `saif`, `vcd`, or `fst`)",
             default = "none",
-            values = ["none", "vcd", "fst"],
+            values = ["none", "saif", "vcd", "fst"],
         ),
         "vopts": attr.string_list(
             doc = "Additional command line options to pass to Verilator",
@@ -820,7 +846,7 @@ def _verilator_run(ctx):
 
     # Target binary args
     for arg in ctx.attr.args:
-        args.append(arg)
+        args.append(ctx.expand_location(arg, ctx.attr.data))
 
     # Waveform trace. Use plusargs mechanism to tell the simulation where write
     # the trace to
@@ -830,7 +856,9 @@ def _verilator_run(ctx):
         outputs.append(trace_file)
         args.append("+" + ctx.attr.trace_plusarg + "=" + trace_file.path)
 
-        if trace == "fst":
+        if trace == "saif":
+            result.append(WaveformInfo(saif_files = [trace_file]))
+        elif trace == "fst":
             result.append(WaveformInfo(fst_files = [trace_file]))
         else:
             result.append(WaveformInfo(vcd_files = [trace_file]))
@@ -838,6 +866,7 @@ def _verilator_run(ctx):
     # Target runfiles
     runfiles = ctx.attr.binary[DefaultInfo].default_runfiles.files.to_list()
     runfiles = runfiles + verilator_toolchain.smt_solver_runfiles.files.to_list()
+    runfiles = runfiles + ctx.files.data
 
     # Run
     ctx.actions.run(
@@ -874,6 +903,10 @@ verilator_run = rule(
             providers = [
                 VerilatedBinaryInfo,
             ],
+        ),
+        "data": attr.label_list(
+            doc = "Files the run needs. Reference them from args as $(execpath :label).",
+            allow_files = True,
         ),
         "outs": attr.output_list(
             doc = "List of simulation products",
