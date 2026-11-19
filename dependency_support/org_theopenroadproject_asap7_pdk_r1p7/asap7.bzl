@@ -116,6 +116,7 @@ def asap7_cells_files(name = None, rev = None, tracks = None, vt = None, has_gds
     native.filegroup(
         name = "asap7-cells-sc{tracks}_rev{rev}_{vt_long}-v".format(**args),
         srcs = native.glob(["Verilog/asap7sc{tracks}_*_{vt_upper}_*.v".format(**args)]),
+        visibility = ["//visibility:public"],
     )
 
     # CDL models for LVS checking
@@ -137,6 +138,7 @@ def asap7_cells_files(name = None, rev = None, tracks = None, vt = None, has_gds
     native.filegroup(
         name = "asap7-cells-sc{tracks}_rev{rev}_{vt_long}-lef".format(**args),
         srcs = native.glob(["LEF/asap7sc{tracks}_{rev}_{vt_short}_1x*.lef".format(**args)]),
+        visibility = ["//visibility:public"],
     )
 
     # Library configuration
