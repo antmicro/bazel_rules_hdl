@@ -138,3 +138,12 @@ register_toolchains(
 )
 
 register_toolchains("//verilator:verilator_toolchain")
+
+# Dedicated pip for autotuner
+autotuner_pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+autotuner_pip.parse(
+    hub_name = "autotuner_pip",
+    python_version = "3.14",
+    requirements_lock = "//autotuner:requirements_lock.txt",
+)
+use_repo(autotuner_pip, "autotuner_pip")
