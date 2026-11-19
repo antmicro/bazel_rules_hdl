@@ -4385,6 +4385,10 @@
             "https://files.pythonhosted.org/packages/5f/56/a8120250d128bed162cd73c76d45f6ef9991f3e068f62a8ee060afa3104a/annotated_types-0.8.0.tar.gz": "sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7",
             "https://files.pythonhosted.org/packages/99/91/8acff4f5e50511b911bbccb72b8628a49c68ce14148cd9f6431094859a90/annotated_types-0.8.0-py3-none-any.whl": "sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0"
           },
+          "antlr4-python3-runtime": {
+            "https://files.pythonhosted.org/packages/33/5f/2cdf6f7aca3b20d3f316e9f505292e1f256a32089bd702034c29ebde6242/antlr4_python3_runtime-4.13.2.tar.gz": "sha256:909b647e1d2fc2b70180ac586df3933e38919c85f98ccc656a96cd3f25ef3916",
+            "https://files.pythonhosted.org/packages/89/03/a851e84fcbb85214dc637b6378121ef9a0dd61b4c65264675d8a5c9b1ae7/antlr4_python3_runtime-4.13.2-py3-none-any.whl": "sha256:fe3835eb8d33daece0e799090eda89719dbccee7aa39ef94eed3818cafa5a7e8"
+          },
           "anyio": {
             "https://files.pythonhosted.org/packages/16/ce/8a777047513153587e5434fd752e89334ac33e379aa3497db860eeb60377/anyio-4.12.0.tar.gz": "sha256:73c693b567b0c55130c104d0b43a9baf3aa6a31fc6110116509f27bf75e21ec0",
             "https://files.pythonhosted.org/packages/7f/9c/36c5c37947ebfb8c7f22e0eb6e4d188ee2d53aa3880f3f2744fb894f0cb1/anyio-4.12.0-py3-none-any.whl": "sha256:dad2376a628f98eeca4881fc56cd06affd18f659b17a747d3ff0307ced94b1bb"
@@ -6079,6 +6083,18 @@
             "https://files.pythonhosted.org/packages/6c/c0/a98505f18594f1bce828bb159cec0fcf9860562f1a2c85913409fc8f3d9e/fsspec-2026.9.0-py3-none-any.whl": "sha256:8dd6e646e99ea382bd85f97a45e6b526a442d79423a7dc673f1e2756d05fcb5f",
             "https://files.pythonhosted.org/packages/77/cd/9be253869fc42e764de7f3dedd6969af7d44ff9c3375214a3442a6f3fc08/fsspec-2026.9.0.tar.gz": "sha256:0f08147951c8cb31d844c3547d631053b127863b60be04cf06e121333ee0e2fe"
           },
+          "git-me-the-url": {
+            "https://files.pythonhosted.org/packages/69/36/e58975894d84387432ca9c5f221d4f05f1f07296c5488c1115a964bdef62/git_me_the_url-2.2.0.tar.gz": "sha256:fc000b2c67171f45da263760a75dbce21a08aeb428ee5021cd8ab29330297dc3",
+            "https://files.pythonhosted.org/packages/c5/a8/16ff25e716248b4433a81c429a51996eb2c263199c1777ea1d5424b5c673/git_me_the_url-2.2.0-py3-none-any.whl": "sha256:bd759ddde7d21ebe1d85558f00d6822b74b7e5907adcaeb9fc4d72203a34264b"
+          },
+          "gitdb": {
+            "https://files.pythonhosted.org/packages/72/94/63b0fc47eb32792c7ba1fe1b694daec9a63620db1e313033d18140c2320a/gitdb-4.0.12.tar.gz": "sha256:5ef71f855d191a3326fcfbc0d5da835f26b13fbcba60c32c21091c349ffdb571",
+            "https://files.pythonhosted.org/packages/a0/61/5c78b91c3143ed5c14207f463aecfc8f9dbb5092fb2869baf37c273b2705/gitdb-4.0.12-py3-none-any.whl": "sha256:67073e15955400952c6565cc3e707c554a4eea2e428946f7a4c162fab9bd9bcf"
+          },
+          "gitpython": {
+            "https://files.pythonhosted.org/packages/6b/50/2a923c4dc02522ff9567f07c67ed1deca6d5fa9474f4708168b8088dfa37/gitpython-3.2.1-py3-none-any.whl": "sha256:d66b0832aa8755c1a84892937282df0befb16c97e5a64aeebd68be9c5e323f53",
+            "https://files.pythonhosted.org/packages/c0/ff/fee293f1ec3e1b64db6eb270e00964f29c086d769201474cedb8d1608930/gitpython-3.2.1.tar.gz": "sha256:0f1229ec5c057bdabdeeda8bda4f17bda679ab33dbccc00f24e6a480553c8613"
+          },
           "google-api-core": {
             "https://files.pythonhosted.org/packages/11/51/1d325e9b7358f15dca82e1ed91413c5cecb9d4665da6c44cb8dd348deeaa/google_api_core-1.34.1-py3-none-any.whl": "sha256:52bcc9d9937735f8a3986fa0bbf9135ae9cf5393a722387e5eced520e39c774a",
             "https://files.pythonhosted.org/packages/72/ef/63d89cb580f3a42c51db53b3d151352aa61b9c87ea8cfdd8d24ee6caa09d/google_api_core-2.44.0.tar.gz": "sha256:5ab9a396965c1227d7dea4581e562b7018aa2bca96d2de0be5eb70dc9c8ab3a1",
@@ -7346,6 +7362,56 @@
             "https://files.pythonhosted.org/packages/1c/1f/1621ef434ac5da26c30d31fcca6d588e3383344902941713640ba717fa87/myst_parser-1.0.0-py3-none-any.whl": "sha256:69fb40a586c6fa68995e6521ac0a525793935db7e724ca9bac1d33be51be9a4c",
             "https://files.pythonhosted.org/packages/5f/69/fbddb50198c6b0901a981e72ae30f1b7769d2dfac88071f7df41c946d133/myst-parser-1.0.0.tar.gz": "sha256:502845659313099542bd38a2ae62f01360e7dd4b1310f025dd014dfc0439cdae"
           },
+          "nanobind-backend": {
+            "https://files.pythonhosted.org/packages/00/d4/cce583c8177b061a3ee82c23da857f64975c1f28bdd614ecf7beda52f38a/nanobind_backend-1.0.0-cp315-cp315t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl": "sha256:6ea3fe04341040b09444cc946f5cd39145290b2de3b90ca9868b1b59cc75c23e",
+            "https://files.pythonhosted.org/packages/03/11/6c515cac31f723d2ce2c3155de4343a3ccf612025171cde25d48290c3680/nanobind_backend-1.0.0-cp313-cp313-win_arm64.whl": "sha256:6b7c31403e6f39fd704359ce4a0687d894a9ffa67813da6a54c6d0eb6fde93aa",
+            "https://files.pythonhosted.org/packages/06/eb/1c4f3e1fcc41093e321b1c4eb7ca79f628a36057496398bb9fba4d97e417/nanobind_backend-1.0.0-cp313-cp313-macosx_10_14_x86_64.whl": "sha256:a6dd7a66fb7416d62be577d41d64478a187d9f36d089759555698bb08addc2c3",
+            "https://files.pythonhosted.org/packages/08/08/fecefa8c4e5774222b2ed1b715822bca5c9bfb5623fef9be7cc9133df18c/nanobind_backend-1.0.0-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl": "sha256:926ba1e7e12bbf3f701f7a200e8801c5f9bd05ba2244962692fcafbd32b8a0d2",
+            "https://files.pythonhosted.org/packages/18/bf/2f6dbcedcca065c20b73346f037d69d78fdb545c9abbf7ad8b27da7890c5/nanobind_backend-1.0.0-cp312-cp312-manylinux_2_39_riscv64.whl": "sha256:00dadccfa92d0f9eac0b1877fdc3fd99d2ebb1a651fbe44daff365a173bd2faa",
+            "https://files.pythonhosted.org/packages/18/c2/d59e5b6af43e45088c18895035e053c4585bce7d1bde9679368ef5b960e0/nanobind_backend-1.0.0-cp313-cp313-macosx_11_0_arm64.whl": "sha256:28a4c397d6d36dfb712acbab817c02ad2f8658a85fb1dbbae7385689d28d20e9",
+            "https://files.pythonhosted.org/packages/1d/60/7754c00b60994a790574ec6190aeafeb8878e7c72c2c1877b84ebc911451/nanobind_backend-1.0.0-cp315-cp315t-macosx_10_15_x86_64.whl": "sha256:d8581ccc5f000a76b4304f9c8c4ee9e60499a9d9502e6e0e885c1606d6b29f60",
+            "https://files.pythonhosted.org/packages/24/a1/97ffb303def8e5a4e48694b01d58477899392468295e8af5c60fdae5f035/nanobind_backend-1.0.0-cp313-cp313-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl": "sha256:8ddf018fc62a2bd51e9d7cc6477af7ae13ccc0db69b775d67d837ba7e0bc41b4",
+            "https://files.pythonhosted.org/packages/24/bb/fbaa64393f5ed253de5879e8d30477d05f53a3c2b106b9db4f33db7da310/nanobind_backend-1.0.0-cp311-cp311-win_arm64.whl": "sha256:dc199056cbd534c5317899539a36245aa14bce6b8afd48c217e578b2463e0594",
+            "https://files.pythonhosted.org/packages/2c/01/7bb71f0a2566cb398d6877e3540307c3d0e684797001eb1128c2c3732a52/nanobind_backend-1.0.0-cp313-cp313-manylinux_2_39_riscv64.whl": "sha256:36a116471c3ca0b6cd3af1e1fa2e38c52086a2d2daf00b86f90a99da5efdde53",
+            "https://files.pythonhosted.org/packages/2c/7e/ef67e5cfc1436fb9759797fdd5fb68062d1d5cf50e36182c208749870d06/nanobind_backend-1.0.0-cp310-cp310-macosx_11_0_arm64.whl": "sha256:2946667fb8cc7bbb52d0151c090540576a528e48dcd7d1bebe007688e70f8a5d",
+            "https://files.pythonhosted.org/packages/2e/13/eebc40c9d083aa032e56a3ea1cf316b621e32de46b4c4daa3274ab5b1ed5/nanobind_backend-1.0.0-cp310-cp310-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl": "sha256:2cc095faf04db1b8c05e4685b6b6ed1155d67a148cb892ead6b7b64574184b0e",
+            "https://files.pythonhosted.org/packages/33/82/474e530e562a2c98db0dbd35cc2bc08500895be7cab6b13c5c990c09a650/nanobind_backend-1.0.0-cp314-cp314-macosx_10_15_x86_64.whl": "sha256:04a35c7395daeb9a33f6801ca3d1e11e0384702ae22b8e3e251ef9f6a4a54c10",
+            "https://files.pythonhosted.org/packages/34/e1/5630f4e2297fb03749551592e9850ba45d498952a135d3065b49bc68e603/nanobind_backend-1.0.0-cp315-cp315-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl": "sha256:9574cc624b9fff2e8f5946211422476977e43f6b796b83e143b289ecb70df4cf",
+            "https://files.pythonhosted.org/packages/35/d2/590dd301da0d44a02ac297331e1e2a22934f851aa0b3d390156ecc6573fb/nanobind_backend-1.0.0-cp310-cp310-manylinux_2_39_riscv64.whl": "sha256:a6d17ca7457000f848556a31f5884b2286a70db1b20aa0ccb090241f2dafd83d",
+            "https://files.pythonhosted.org/packages/36/e8/526799c68933550776b2002a0240ff770474d11a527962541b212f9d23fc/nanobind_backend-1.0.0-cp315-cp315t-macosx_11_0_arm64.whl": "sha256:17a9ddc6cc096d713151fbbaabe41d960d1d596c0e046abcd2b17c6d6565c443",
+            "https://files.pythonhosted.org/packages/37/fe/69f69fbcd6d4e6cee3e27e65a2b10e354da8adfd0d88a87c4c33a845864f/nanobind_backend-1.0.0-cp314-cp314-manylinux_2_39_riscv64.whl": "sha256:ce93f26da63eaa24729d214fa6669525293d75e56f394f2980839cd65a75d2e5",
+            "https://files.pythonhosted.org/packages/49/77/45d11f991aa78e8dfaac490c6330e38912d414b60a6b624024e8eaa4cadb/nanobind_backend-1.0.0-cp311-cp311-manylinux_2_39_riscv64.whl": "sha256:d77ecad0d4b8526865f6bec7cd77603c686ef65b57cc7ec81795b3a468dba0f1",
+            "https://files.pythonhosted.org/packages/56/f2/7a44d3b12d4a876c123445fe6f4971eff1260c6f7660ee00e261cdbe2770/nanobind_backend-1.0.0-cp314-cp314-win_arm64.whl": "sha256:1e5f8217887d1d83ccbe1e61c37d1502ab951fef466a06df2abb1161e246ef79",
+            "https://files.pythonhosted.org/packages/5f/9a/0db4d9982ac708b6c532ca6ea2a523d5c85a25f7fc288558c4d6fad725b0/nanobind_backend-1.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl": "sha256:33bdec0da2f78669d5c95bd546ff2bb7744dafa43a16bb72b2eecdf83d8c3b3a",
+            "https://files.pythonhosted.org/packages/65/29/101f4ebf5d0455ddab57785d8a341c1bd25d248e0c444ef9cb6ce85df9bb/nanobind_backend-1.0.0-cp315-cp315-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl": "sha256:d9a15c8155c465066fdf43a2589223cd41f4a688f52046f59edcded0790a8ad3",
+            "https://files.pythonhosted.org/packages/6a/d0/7e56cf0b6faae40d23ec7b5c4d90ad74480038bc99dd9f8b05c58dc70726/nanobind_backend-1.0.0-cp315-cp315t-manylinux_2_39_riscv64.whl": "sha256:983aaeaf65e61ddff125a3eea463675d322d9981510f6f6e462e6bcfc915dca6",
+            "https://files.pythonhosted.org/packages/76/49/a4c01de9c358b5749560a5415b899a8b57399381e5c8ae64962381302a59/nanobind_backend-1.0.0-cp311-cp311-macosx_10_14_x86_64.whl": "sha256:b20b3e4bbb672987f9d65e52f1829299589c1ccf0502360879846a922e9cb1ed",
+            "https://files.pythonhosted.org/packages/7a/45/851847d5246c0c47dbebe473ecfbb0ed44a41fae9ef7e2ec73cd7c8975a3/nanobind_backend-1.0.0-cp312-cp312-win_arm64.whl": "sha256:a1f6e6320aee495e5cad933d671e9d60ee42f4bf460930ef7afed191243aa733",
+            "https://files.pythonhosted.org/packages/7f/da/f6af805e0737652d4b6aa2e51e3ec1485d906e77ee9389b126adbb9f9644/nanobind_backend-1.0.0-cp312-cp312-win_amd64.whl": "sha256:9b1502e3f160358feff92f60a634e198c76754f50a60fdacd9a8b5dccbe5d9d0",
+            "https://files.pythonhosted.org/packages/89/3e/e33c10a7b0a728e83d492673612146ed7cd47c5d28c242969b4296cb6265/nanobind_backend-1.0.0-cp314-cp314-win_amd64.whl": "sha256:b0eabf671c91fdcd6a61d2177aa434731680442aa2317de54acfabeac4a4cc06",
+            "https://files.pythonhosted.org/packages/8c/db/badc51c6b13ccb0f7a6ef88e8be014193cfe727f0849eaafa28489a848a2/nanobind_backend-1.0.0-cp315-cp315t-win_arm64.whl": "sha256:8975422479b145ce46d4d79b4fc03dbfab40254470468a99ea417090bb1ce460",
+            "https://files.pythonhosted.org/packages/8f/36/7f79710b96ba643c91db149f7ba1b454124cf2cf97e379ef6c3529d97dd0/nanobind_backend-1.0.0-cp314-cp314-macosx_11_0_arm64.whl": "sha256:574d104bf6322711e5db55ed49409289df9582e8c1fd2a2f2d643d2136428e13",
+            "https://files.pythonhosted.org/packages/90/49/8038eedfd35433968e638081ca4eb6881869e517f766beff0f095387dc9a/nanobind_backend-1.0.0-cp313-cp313-win_amd64.whl": "sha256:915c6ff4ce92584cdde18a24cc5d730f04a70c2f26bc0bc4db903ca54043eb86",
+            "https://files.pythonhosted.org/packages/97/96/ee9bf6a053d8a2f505eab8cafc36ff8a3e4f928d0b01fd9befac579d537a/nanobind_backend-1.0.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl": "sha256:b7ea25c4b69a337eae4377e0c53f0a000dfd996bfe61303bc03996e8b2bf5735",
+            "https://files.pythonhosted.org/packages/9b/29/a953f8be0c7b69509793d179f8f709b2c5d301bf65089bb3d87afa859f25/nanobind_backend-1.0.0-cp315-cp315t-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl": "sha256:a83f1c86aa2c7da33ce4a8df4304d34d6364335b2c455a490983059471e21c4d",
+            "https://files.pythonhosted.org/packages/9f/29/6dd73fdcd3deed710d0dc3b2a4a86ad491450dbc2cd58018a9091a4164f1/nanobind_backend-1.0.0-cp315-cp315-win_amd64.whl": "sha256:4ae0214ad6708b8001d82f1dd6c302aaba9627d81aa0573efc896a3b90f95bce",
+            "https://files.pythonhosted.org/packages/a2/14/cd5789bb09cb3a82b9e85b5164f2b4d7cff2ca6b861d4f89a7df9ae8d207/nanobind_backend-1.0.0-cp315-cp315-win_arm64.whl": "sha256:a7a97a1326fa2d70e013b7af769305796047a01dc4567f5f90d769c6a2e2344d",
+            "https://files.pythonhosted.org/packages/a3/3b/806d3346ae8175746853b204efd59a4ad8bbddf91d48d03f4eac48d15245/nanobind_backend-1.0.0-cp312-cp312-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl": "sha256:4a42503f65cd595f97a31f24d21c6ddbd017ffcb808626d0134e475e0db25f3d",
+            "https://files.pythonhosted.org/packages/a6/19/3104f9a204271cd57192bdf50577980c030ad3e53dd6ae6fe1aef9bbb5d8/nanobind_backend-1.0.0-cp315-cp315-macosx_10_15_x86_64.whl": "sha256:4816cf6f998b0c2435aa643df7a5c59492202778c96e575e55da802e51c75461",
+            "https://files.pythonhosted.org/packages/a8/65/c3ff5ef09109a163a3cbe8a69250ae7c4b0b4d8df79b1cb447d03747529f/nanobind_backend-1.0.0-cp311-cp311-macosx_11_0_arm64.whl": "sha256:89c582f83d491ba01aa1a5ad39ed6c59bdead67ec3b8c88b288b7e4b6bac18df",
+            "https://files.pythonhosted.org/packages/b3/14/40f0a465df491562debf55044bcfc728dca7cb8e3ef76f532aa8f75e775b/nanobind_backend-1.0.0-cp311-cp311-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl": "sha256:fdf41e97cfb9f149c89b323b7850bd9dc6316d1d79adf99081511b9a1d0858b1",
+            "https://files.pythonhosted.org/packages/b8/57/f02cc977a0ba1ddf2a41ebad61bcf2fbfd905aef7753082d9f39389a13e1/nanobind_backend-1.0.0-cp312-cp312-macosx_10_14_x86_64.whl": "sha256:9fd9145b1aa8e9b78029308a73e1ade94369d7250c826783655210d1800f1493",
+            "https://files.pythonhosted.org/packages/b9/2c/7fb13ecb1e8c0c268e26c6bc44be4a7f51996b2a3c006749ce6fc4fd7da2/nanobind_backend-1.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl": "sha256:6aa9864050cc5fd1ff59d1f9b79740efa278515eed27af848efae07125c029b8",
+            "https://files.pythonhosted.org/packages/bc/3a/40e9ef3133573dddf32f7dcaf1bc7d4f459ecb632b2274c7a619fbfa40ea/nanobind_backend-1.0.0-cp312-cp312-macosx_11_0_arm64.whl": "sha256:dca8999e4e87a4e39e162c55b70f39fe1882913c4d7de1adab81cf82bb8cb9ad",
+            "https://files.pythonhosted.org/packages/c0/3e/0a2143308fd413ae10da3fb8732e9d2fc87de4605a1126d304ffe9f63414/nanobind_backend-1.0.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl": "sha256:de2c78ed4b88ef6c59a835eebe7f5e91ab6869f17f915a61c7d4eec24a1e2b85",
+            "https://files.pythonhosted.org/packages/cd/68/698c970f8df703be42720b96678ce0de08536938c95b3ab551e64a33f9ca/nanobind_backend-1.0.0-cp315-cp315-manylinux_2_39_riscv64.whl": "sha256:fac95e67ba91c639c52298388d22595c1d912a09a671d4793c8d16711a0dd1be",
+            "https://files.pythonhosted.org/packages/d9/22/8a2576123da22743a1ca6b683e2e1a046990dd75ab3f70c21c0c8690d936/nanobind_backend-1.0.0-cp311-cp311-win_amd64.whl": "sha256:691be892dcd6b4b1317d628b49bf3e688470f4f927ac316dca233ee19fab7ecd",
+            "https://files.pythonhosted.org/packages/f3/6b/441ddd77a34b013350289c2fc99279d76403d45ab6cfdd6ea60be3e09a75/nanobind_backend-1.0.0-cp315-cp315-macosx_11_0_arm64.whl": "sha256:7a7c76fc958eb7bf4b5454d9c036f1e92f8b406343c7b7b7f4e53302718ffee6",
+            "https://files.pythonhosted.org/packages/f4/cf/941d624be0dd41f4bb139fe74d489d83845909dadc9f19fe7d4da5d5c3d1/nanobind_backend-1.0.0-cp315-cp315t-win_amd64.whl": "sha256:2a42cd509c1889cbccdcf8a23dc3733c4b7e2388973ac4292db094576e3e27d0",
+            "https://files.pythonhosted.org/packages/f8/74/1cd06a4ab1fbb03aaba84f27d2536c925a0c87d6873fc794c0258de45264/nanobind_backend-1.0.0-cp310-cp310-win_amd64.whl": "sha256:e27e34cb764d0dbb07319e3e956be3e08392e55f1e778c823f2f3951246bfd4c",
+            "https://files.pythonhosted.org/packages/fc/65/8073c078a91e2fed8c54154f6a0b1d39e362c0ab5ffa7cb93c73f87c9954/nanobind_backend-1.0.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl": "sha256:a42a2d594f22e689f15cbdbdf4bf1468ef7a8287da41842515c1cc836a1f2dec",
+            "https://files.pythonhosted.org/packages/fe/23/e892b9c91154b16987ebc7efd795b3a23e244e8fba3ed071f9ac84224c3b/nanobind_backend-1.0.0-cp310-cp310-macosx_10_14_x86_64.whl": "sha256:e096d976adfd4d2950095e40134832d9325e62b180c6548174996f20d44d0e82"
+          },
           "narwhals": {
             "https://files.pythonhosted.org/packages/67/43/e11d75a7fb635c6f63dd6e176cb3e050ec2fee35f2f2267b332a6ad351ec/narwhals-2.28.0.tar.gz": "sha256:2d9860c80d6610820826e94c6e42ce4b1d92d89cdd479586e652a8d211dab345",
             "https://files.pythonhosted.org/packages/cf/82/8ef9c7e0f50493307a49c09cfa7f00c5a778b6d1921f7b2dabe1d3a5809e/narwhals-2.28.0-py3-none-any.whl": "sha256:1f69d6385ec30e2fa6e1fdeb37c562ecabd0f713f6f3e3b58a668c5c9df9567f"
@@ -7908,6 +7974,38 @@
             "https://files.pythonhosted.org/packages/b4/2a/9b1be29146139ef459188f5e420a66e835dda921208db600b7037093891f/pathspec-0.11.2-py3-none-any.whl": "sha256:1d6ed233af05e679efb96b1851550ea95bbb64b7c490b0f5aa52996c11e92a20",
             "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl": "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189"
           },
+          "peakrdl-cheader": {
+            "https://files.pythonhosted.org/packages/73/eb/0029f029510523277d2aea7c6a7b86f4c6a14da092c06700434d191483be/peakrdl_cheader-1.1.0.tar.gz": "sha256:2e1593d68ca96608eb0b29ae3efbd5abca961050984d4ee1e4a65998237cd58b",
+            "https://files.pythonhosted.org/packages/f7/a4/112cc4f9c80c7c1373e38e33172d8219bf4db360b915dd856e2fb31a0cec/peakrdl_cheader-1.1.0-py3-none-any.whl": "sha256:72bc5af33a0a353eacc88fd35e271a9f008176b758fdb0c7cfbff1f5144c42af"
+          },
+          "peakrdl-cli": {
+            "https://files.pythonhosted.org/packages/12/c8/85baad7853c8995407ce04e98aaff713bc0d82de1f38721679f033c53d0b/peakrdl_cli-1.5.0.tar.gz": "sha256:fb11961bc4d5636239e02b3392072025e7310afaceba34d834adbb279c770f65",
+            "https://files.pythonhosted.org/packages/cc/0d/8b3023ad5fe1b8fdaeb15a8a1f54dc9de384e398ebd374e234f783b4c100/peakrdl_cli-1.5.0-py3-none-any.whl": "sha256:e6d86a41f8e8cdf09021e0abfdad604f6213f8d3aaf7ea6579ccbb6f047c81ca"
+          },
+          "peakrdl-html": {
+            "https://files.pythonhosted.org/packages/14/32/8bb83251ca56366af0fcea102331b337e87b2baeca81ade16942357e172f/peakrdl_html-2.12.2-py3-none-any.whl": "sha256:1b74a43579900b48fb6ebf0468b91c50d2256828d1f9751da8bfeb2f0883710c",
+            "https://files.pythonhosted.org/packages/19/0a/069fd914b588ef1d9dbc89031d962293fa2b9255c3b1104f9de9f0891320/peakrdl_html-2.12.2.tar.gz": "sha256:7be4b92dead8d296d714da5d25e71249ebf488bccdd255ed7581f32dd3a99546"
+          },
+          "peakrdl-markdown": {
+            "https://files.pythonhosted.org/packages/7a/f4/20ca21c0cd8f772c0ee71b35a2992962b6520980822841550bff681c036e/peakrdl_markdown-1.0.3-py3-none-any.whl": "sha256:a528829b36f121b85081f0442bf4a9bb9567a9fdce263a11081ba7bd502a342e",
+            "https://files.pythonhosted.org/packages/9e/9f/c49e2872706ba4de2178b4965d8dc2c26ca9258b37ff1fee94ce35e17879/peakrdl_markdown-1.0.3.tar.gz": "sha256:1647f42fcb6fc87da1ee6242c76a0eb0b7d0088839c21ebfdf72214f34ab6347"
+          },
+          "peakrdl-pyral": {
+            "https://files.pythonhosted.org/packages/64/05/f5af72d1120a40261bc0b5c2b326945dc9e2537be5f2fd749228f3f43906/peakrdl_pyral-1.1.0.tar.gz": "sha256:a5ba9e55233e5d2650606c34dfdb4cc183c192e7f119d0357746177557df08da",
+            "https://files.pythonhosted.org/packages/9c/ae/17537e8e7eff8a264b9a95ffff341c4dcd4c4ae589b3281ae68988962ce9/peakrdl_pyral-1.1.0-py3-none-any.whl": "sha256:d394e3d320523d3f4b5bdd7ef48f9276170bee41b5a6d7fc2c1567509fdcd583"
+          },
+          "peakrdl-pyral-runtime": {
+            "https://files.pythonhosted.org/packages/9a/94/79f85d66c12fdf4197d0b5bbacd7d2239da42ff9b243cce9cc70630e9918/peakrdl_pyral_runtime-1.1.0.tar.gz": "sha256:7e0a6d56acccacecdb6f94ecce77f2e7ad7b04f86afecf50248ae148d7aeb794",
+            "https://files.pythonhosted.org/packages/ac/2d/ad7d446bd9e3dc0381d47797273d5ded86aa60f656529132eb13134495b5/peakrdl_pyral_runtime-1.1.0-py3-none-any.whl": "sha256:1b545a992537bbd77e6e6edca771ceb753f93c347f78988e1901f0839b2cf9e5"
+          },
+          "peakrdl-regblock": {
+            "https://files.pythonhosted.org/packages/67/69/c35c9a4d2d461a839e9041c763fcfe6294f5399e13dc554c60ecbea67e34/peakrdl_regblock-1.3.1-py3-none-any.whl": "sha256:d769306d834dea3dbd02cdd976f694d2009ef33dbb72bcfadc344b7de6cfb492",
+            "https://files.pythonhosted.org/packages/ca/d1/f6488f1d3ac8b3cfa7120ed9e8c586193c8372f2336ee8e94d8559261da0/peakrdl_regblock-1.3.1.tar.gz": "sha256:d72803e62ff0c0feb2c17a51263e39cdee14ec6bf5dc8a7100e8a93f63306a07"
+          },
+          "peakrdl-uvm": {
+            "https://files.pythonhosted.org/packages/45/f0/cc6f81291ce62422ca6b73efe2e032d86689dadd91a04356e199f0b915e1/peakrdl_uvm-2.4.0-py3-none-any.whl": "sha256:2ec87aaac25f6597a0a0b173edae8cd81d1dd05957591013f1e6b93957de0d87",
+            "https://files.pythonhosted.org/packages/5a/d4/de4c1e44ba589aaae7fa230266516ba67608e7dca425ccf3a7b21bb062ab/peakrdl_uvm-2.4.0.tar.gz": "sha256:bebbec7ea84c76137e3e61442565d1de9a225eaf01774c65de3d10dd7096ad78"
+          },
           "pexpect": {
             "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz": "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f",
             "https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl": "sha256:7236d1e080e4936be2dc3e326cec0af72acf9212a7e1d060210e70a47e253523"
@@ -8260,6 +8358,10 @@
             "https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl": "sha256:1db8e35b67b3d218d818ae653e27f06c3aa420901fa7b081ca98cbedc874e0d0",
             "https://files.pythonhosted.org/packages/cd/05/0a34433a064256a578f1783a10da6df098ceaa4a57bbeaa96a6c0352786b/pure_eval-0.2.3.tar.gz": "sha256:5f4e983f40564c576c7c8635ae88db5956bb2229d7e9237d03b3c0b0190eaf42",
             "https://files.pythonhosted.org/packages/da/9f/abfd2959e9261dd5217ca8551d4de211ca6ab26fe9b72cf44731ff6c4442/pure_eval-0.2.4.tar.gz": "sha256:260c2774686e651b79f8b8e7fc9d80b3599ea6a66334b47d5f4abb69fc2c0ea1"
+          },
+          "py-markdown-table": {
+            "https://files.pythonhosted.org/packages/35/5e/c4afc80e5a76aa7d0801378cb720a2f894097c25497221ad139b5b73d24d/py_markdown_table-1.3.0-py3-none-any.whl": "sha256:b8740b57e466f343dbb1e9c7ca4e2d1b4281d96fb922bf1ed60b6c496c8725c4",
+            "https://files.pythonhosted.org/packages/dd/f6/9ab65a746a4ab6618e4c9da6875cacee269c496694dcbeab8ead9ebb29dc/py_markdown_table-1.3.0.tar.gz": "sha256:be63f6bcbe32e10a9a68575eb48a648949df067b54b48ad6d993b0e5748f57d6"
           },
           "py-spy": {
             "https://files.pythonhosted.org/packages/43/7b/23bd7b54e3abf04bd7857a65a236259ac89e2d038bc24129f608735b68a6/py_spy-0.4.3-py2.py3-none-manylinux2014_armv7l.manylinux_2_17_armv7l.whl": "sha256:885d61020f763792e99cb3ad0788ae424b73cef45d5420ec9683f30e270b5d75",
@@ -8708,6 +8810,14 @@
             "https://files.pythonhosted.org/packages/45/65/bc5253ac2542e25fac17f7ede4946f9f70f5b415fe788f49c3d31e548a58/pyro_ppl-1.9.2-py3-none-any.whl": "sha256:4fa9a96e1af113a8b2bdf5d54299f6a86b05aa6f1be1761f520a7114c186902a",
             "https://files.pythonhosted.org/packages/be/7c/e140e52537016af9d9f3d9cd3fc4e0bdfed8ff670985e1326d3ee21010c2/pyro_ppl-1.9.2.tar.gz": "sha256:e4a4b089023777c0bc98c01db4c6ed5e39a1001985ebccfe210dc545bf5b24dd"
           },
+          "pyslang": {
+            "https://files.pythonhosted.org/packages/61/8f/0adeaff9e2153382980488072db0f50b5d832fe863ab2833a1095c382f08/pyslang-12.1.0.tar.gz": "sha256:c1f22ac3e033c3ccfe01ad3158db4253ad0be377f675344397f7394e90f53962",
+            "https://files.pythonhosted.org/packages/64/4c/4368b40a649f0b4117162d95c03f67c014401bfaa0d47cf4d3d795fd38df/pyslang-12.1.0-cp311-abi3-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl": "sha256:d3f51a5b9cd553b243905cb59baf1d49cccac2ebf1d5a4063eeb5eed07f7aadd",
+            "https://files.pythonhosted.org/packages/73/00/21b6289c1d075df9c435a7cdbb04369fb3d3493715600c09aedba850c6ba/pyslang-12.1.0-cp311-abi3-macosx_11_0_universal2.whl": "sha256:9ee05af53d95ac41452bdabe8f2ad30d80ae767f0b0f0d5fa806734272f3b995",
+            "https://files.pythonhosted.org/packages/bf/45/ef22a54317288a61603639dae841fff431b01a7f2c70505eeb70dcd1aada/pyslang-12.1.0-cp311-abi3-win_amd64.whl": "sha256:6fe77f9b4d793bcb2c43852a2a0663c643a36ce75187ab91c2cfb2dada87e27e",
+            "https://files.pythonhosted.org/packages/da/70/a2675fe73b64ff9bd0e16a3a9ded9c58ee25fe62bed1eaaf06c4567cd33c/pyslang-12.1.0-cp311-abi3-macosx_11_0_arm64.whl": "sha256:822175a31d341d0054a9dd6b7952f7a1c009c0df6f681d50e6736747bd86045e",
+            "https://files.pythonhosted.org/packages/f4/35/fc05327c97ab9842919897535353ed79d5e9e323a3b00fa208db5b743d8c/pyslang-12.1.0-cp311-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl": "sha256:9d0bd72729eb85f76c0cd3259b758d1e2a692717f95ee3d41530b11c9e117f7c"
+          },
           "pytest": {
             "https://files.pythonhosted.org/packages/24/25/1de2678b631f5a49215c6c96fff41ba892b0a34df68d6d80292b1b48aa7f/pytest-9.1.1-py3-none-any.whl": "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c",
             "https://files.pythonhosted.org/packages/e4/47/b9efed96c114afcfa3c9d3fe98a76a1d14c74a9e266d397cf6eb64be5e01/pytest-9.1.1.tar.gz": "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313"
@@ -8725,6 +8835,10 @@
           "python-json-logger": {
             "https://files.pythonhosted.org/packages/29/bf/eca6a3d43db1dae7070f70e160ab20b807627ba953663ba07928cdd3dc58/python_json_logger-4.0.0.tar.gz": "sha256:f58e68eb46e1faed27e0f574a55a0455eecd7b8a5b88b85a784519ba3cff047f",
             "https://files.pythonhosted.org/packages/51/e5/fecf13f06e5e5f67e8837d777d1bc43fac0ed2b77a676804df5c34744727/python_json_logger-4.0.0-py3-none-any.whl": "sha256:af09c9daf6a813aa4cc7180395f50f2a9e5fa056034c9953aec92e381c5ba1e2"
+          },
+          "python-markdown-math": {
+            "https://files.pythonhosted.org/packages/4c/68/fbea05ec6fb318bdcf56ea47596605614554f51d77bfd14f6fb481139ad8/python_markdown_math-0.9.tar.gz": "sha256:567395553dc4941e79b3789a1096dcabb3fda9539d150d558ef3507948b264a3",
+            "https://files.pythonhosted.org/packages/eb/68/ecf3535c40845de2efd8ac2d092dd5fca0868219fa3684d9e58ef7abeece/python_markdown_math-0.9-py3-none-any.whl": "sha256:ac9932df517a5c0f6d01c56e7a44d065eca4a420893ac45f7a6937c67cb41e86"
           },
           "pytokens": {
             "https://files.pythonhosted.org/packages/04/92/086f89b4d622a18418bac74ab5db7f68cf0c21cf7cc92de6c7b919d76c88/pytokens-0.4.1-cp310-cp310-musllinux_1_2_x86_64.whl": "sha256:4e691d7f5186bd2842c14813f79f8884bb03f5995f0575272009982c5ac6c0f7",
@@ -9465,6 +9579,10 @@
             "https://files.pythonhosted.org/packages/21/df/8e78724259af8d3d456f14ff933134cf2771cb92460b20f1f6f656219d18/smart_open-9.0.3.tar.gz": "sha256:9911fe8cdc60834bd51a28c5d2ec16cdc8b702a24b10e1b747c9dbbbeb423746",
             "https://files.pythonhosted.org/packages/d0/7d/7721837d91457cd6490f78015a7a5f9b8e8c549d8e044a09e5d443ace591/smart_open-9.0.3-py3-none-any.whl": "sha256:8de5f18719bb79b5621571291463d9ab3935bf007b310eb7e604b1b59f2a96b4"
           },
+          "smmap": {
+            "https://files.pythonhosted.org/packages/1f/ea/49c993d6dfdd7338c9b1000a0f36817ed7ec84577ae2e52f890d1a4ff909/smmap-5.0.3.tar.gz": "sha256:4d9debb8b99007ae47165abc08670bd74cb74b5227dda7f643eccc4e9eb5642c",
+            "https://files.pythonhosted.org/packages/c1/d4/59e74daffcb57a07668852eeeb6035af9f32cbfd7a1d2511f17d2fe6a738/smmap-5.0.3-py3-none-any.whl": "sha256:c106e05d5a61449cf6ba9a1e650227ecfb141590d2a98412103ff35d89fc7b2f"
+          },
           "snowballstemmer": {
             "https://files.pythonhosted.org/packages/43/f8/0a71edf031f03c40db17503cb8ca78a69a171254e568e7db241b0ab57ea1/snowballstemmer-3.1.1.tar.gz": "sha256:e07bbc54a0d798fe6010a12398422e62a8bfbba95c394fd0956ef58cb4d3e260",
             "https://files.pythonhosted.org/packages/4c/07/2ebca9b11fb9be7340a818d8d6f63feaebb146be2c4afbd6061701d6df6e/snowballstemmer-3.1.1-py3-none-any.whl": "sha256:7e207fa178741da09cdee59d3ecec3827ad5f92b1fc5c9ff3755b639f71f5752"
@@ -9624,6 +9742,19 @@
           "sympy": {
             "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2bb238361cd4ae6125a569b4db67cd9e79846ba2d68c/sympy-1.14.0.tar.gz": "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517",
             "https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl": "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5"
+          },
+          "systemrdl-compiler": {
+            "https://files.pythonhosted.org/packages/03/ac/2088114d65e191e2a057313036254fb3df6ec64aaa744929a50b1e5202cb/systemrdl_compiler-1.32.2.tar.gz": "sha256:3308f5ba2db23f035c25391022c70dbaba8980fdbfdf652bd2ad79fd33aba1f2",
+            "https://files.pythonhosted.org/packages/06/18/7abeafa5b642cc9e89ed534a7a73416b77540e7234bea08cc3138e790844/systemrdl_compiler-1.32.2-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl": "sha256:c2777441b26f8ac880ba402c300bb2fd92d6b155aa50261715d9519a3a6e780a",
+            "https://files.pythonhosted.org/packages/28/84/4a0369f39c5a6a960382a2a9db0b8d7f511e1941c6ef21a9fb5401ce76c4/systemrdl_compiler-1.32.2-cp37-abi3-musllinux_1_2_x86_64.whl": "sha256:a05dd1bcd8e7c29d2fe67fb46149f503f39173e462b4bf63fbd375fc0efd3cd1",
+            "https://files.pythonhosted.org/packages/55/43/2ffd2c7753789e02bac7d902e847738af81f9a32098233464067a85ba92a/systemrdl_compiler-1.32.2-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl": "sha256:c9707da961e8b8b28c43ebf542b2863e2dc581d194f5c4ceb0315a45ad8883e0",
+            "https://files.pythonhosted.org/packages/5a/18/d76dc65c7a2cffb5524c018c9edd69397d94f4cd708b52fad2c8cc3f8c99/systemrdl_compiler-1.32.2-cp37-abi3-macosx_11_0_arm64.whl": "sha256:4870074e9d1f720f577966e107f7096e0c464772456ecd9e772fd2055216d6a4",
+            "https://files.pythonhosted.org/packages/69/43/6794d66c9aa5394376ca1ef18343ebf146f25c75ba0d4240707e6198e47c/systemrdl_compiler-1.32.2-cp37-abi3-win_amd64.whl": "sha256:06d6221257251adc0ee422da2dae9748a88239d72dd6e9b6ee21788396d6c2d0",
+            "https://files.pythonhosted.org/packages/74/a2/91435c5c8b13dc065dd28dd6e7ca4122de566157f0282126add9025e74e5/systemrdl_compiler-1.32.2-cp37-abi3-win32.whl": "sha256:402620a125e11086da3e1b609a3c8bd82d207c71691f6547242a3df237eb3b30",
+            "https://files.pythonhosted.org/packages/94/7b/f94162860a1a5e2ccaa707c9c4c4c5031d98f3f00251b03a75ee9147b4da/systemrdl_compiler-1.32.2-cp37-abi3-musllinux_1_2_aarch64.whl": "sha256:56f37930d5948da9ca77b70702d11b5b19bb9755e5fab97444aa65ce9be8d37e",
+            "https://files.pythonhosted.org/packages/d8/c7/ca0aa3d315e606c584841f1929b0b9bd7d9a6f1b1c76f09164cfd3f0ee2f/systemrdl_compiler-1.32.2-cp37-abi3-macosx_11_0_x86_64.whl": "sha256:69e8ce07e5435cd61dc126113734b0f5e26271f193e08c9f31326a429d857fd9",
+            "https://files.pythonhosted.org/packages/dc/3e/3596309bc436ca1ca6a8e20aee3af8b4924038fbeb422514f9b0756fbaa5/systemrdl_compiler-1.32.2-cp37-abi3-musllinux_1_2_i686.whl": "sha256:8477c6d9fab1458c6dbd95f3d38bdb5c2a40998601a467e8e6c230cc82880b46",
+            "https://files.pythonhosted.org/packages/f2/97/04dc3272980a212674c9737f3c2928e49d862879843135c86da90b0c23fc/systemrdl_compiler-1.32.2-cp37-abi3-manylinux_2_17_i686.manylinux2014_i686.whl": "sha256:be36bb56fdcb218e266ec7c1ae950492c6c0d9327c0c4d85912583ac6e26347b"
           },
           "tabulate": {
             "https://files.pythonhosted.org/packages/46/58/8c37dea7bbf769b20d58e7ace7e5edfe65b849442b00ffcdd56be88697c6/tabulate-0.10.0.tar.gz": "sha256:e2cfde8f79420f6deeffdeda9aaec3b6bc5abce947655d17ac662b126e48a60d",

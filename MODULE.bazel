@@ -147,3 +147,12 @@ autotuner_pip.parse(
     requirements_lock = "//autotuner:requirements_lock.txt",
 )
 use_repo(autotuner_pip, "autotuner_pip")
+
+# PIP for reg-gen
+reggen_pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+reggen_pip.parse(
+    hub_name = "reggen_pip",
+    python_version = "3.14",
+    requirements_lock = "//reg_gen:requirements_lock.txt",
+)
+use_repo(reggen_pip, "reggen_pip")
