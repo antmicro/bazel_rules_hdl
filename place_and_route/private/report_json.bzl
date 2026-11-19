@@ -85,6 +85,11 @@ def report_units_json(var_name):
         var_name: name of the TCL variable to store the result
     """
 
+    # report_units retrieve the values from the liberty / PDK
+    # Power requires an override because report_power
+    # already convert the values in Watts
+    # See also : https://openroad.readthedocs.io/en/latest/main/openroad/sta/doc/Commands.html#report-power
+    # and https://github.com/The-OpenROAD-Project/OpenSTA/issues/96
     cmd = """
 tee -variable content -quiet { report_units }
 dict set unit_dict "percentage" "%"
@@ -92,7 +97,11 @@ foreach line [split $content "\\n"] {
   set name  [lindex $line 0]
   set value [lindex $line end]
   if {[string trim $name] ne "" && [string trim $value] ne ""} {
-    dict set unit_dict $name $value
+    if {$name eq "power"} {
+      dict set unit_dict "power" "1W"
+    } else {
+      dict set unit_dict $name $value
+    }
   }
 }
 dict set unit_dict area "[dict get $unit_dict distance]2"
