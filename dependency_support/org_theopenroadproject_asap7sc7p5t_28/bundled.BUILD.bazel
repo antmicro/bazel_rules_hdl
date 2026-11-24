@@ -45,6 +45,7 @@ load("@rules_hdl//dependency_support/org_theopenroadproject_asap7_pdk_r1p7:asap7
 load("@rules_hdl//dependency_support/org_theopenroadproject_asap7_pdk_r1p7:asap7.bzl", "asap7_cells_files")
 load("@rules_hdl//dependency_support/org_theopenroadproject_asap7_pdk_r1p7:asap7.bzl", "asap7_srams_files")
 
+package(default_visibility = ["//visibility:public"])
 
 # From org_theopenroadproject_asap7sc7p5t_28/cells-lvt.bzl
 """ ASAP7 "rev 28" 7.5 track standard cell library using Low VT transistors """

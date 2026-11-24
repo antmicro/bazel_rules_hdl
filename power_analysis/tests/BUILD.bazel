@@ -19,6 +19,8 @@ load("//verilog:defs.bzl", "verilog_library")
 
 package(default_applicable_licenses = ["//:package_license"])
 
+exports_files(["replace_async_ff.py"])
+
 CLK_PERIOD_PS = 4000  # 250 MHz
 
 # Collect ASAP7 v28 RVT behavioral cell models for gate-level simulation.
