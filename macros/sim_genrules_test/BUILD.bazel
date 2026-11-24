@@ -16,8 +16,15 @@ load("//macros:sim_genrules.bzl", "sim_genrules")
 
 package(default_applicable_licenses = ["//:package_license"])
 
-sim_genrules(
+trace_formats = [
+    "fst",
+    "saif",
+    "vcd",
+]
+
+[sim_genrules(
+    name = "minimal_randomization_%s" % fmt,
     module = "//verilator/tests:minimal_randomization",
     top = "minimal_randomization",
-    trace = "vcd",
-)
+    trace = "%s" % fmt,
+) for fmt in trace_formats]
