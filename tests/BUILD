@@ -53,6 +53,7 @@ verilog_library(
         hdrs = [
             ":verilog_constants",
         ],
+        visibility = ["//visibility:public"],
     )
     for test_name in BASIC_TESTS
 ]

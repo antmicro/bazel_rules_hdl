@@ -1,0 +1,106 @@
+# Copyright 2026 bazel_rules_hdl Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//macros:sim_genrules.bzl", "sim_genrules")
+load("//power_analysis:build_defs.bzl", "post_sim_power_analysis")
+load("//synthesis:defs.bzl", "synthesize_rtl")
+load("//verilog:defs.bzl", "verilog_library")
+
+package(default_applicable_licenses = ["//:package_license"])
+
+CLK_PERIOD_PS = 4000  # 250 MHz
+
+# Collect ASAP7 v28 RVT behavioral cell models for gate-level simulation.
+# Use the same PDK module as the synthesis rule above.
+ASAP7_SIM_CELL_MODELS = [
+    "@org_theopenroadproject_asap7sc7p5t_28//:asap7-cells-sc7p5t_rev28_rvt-v",
+]
+
+filegroup(
+    name = "asap7_sim_cell_model_files",
+    srcs = ASAP7_SIM_CELL_MODELS,
+)
+
+# Concatenate all ASAP7 PDK cell simulation models into the bazel-bin/asap7_sim_cell_models.v file
+# TODO: Remove temporary workaround replace_async_ff.py script when Verilator can properly simulate
+# the ASAP7 simulation models.
+genrule(
+    name = "asap7_sim_cell_models",
+    srcs = [
+        ":asap7_sim_cell_model_files",
+        "replace_async_ff.py",
+    ],
+    outs = ["asap7_sim_cell_models.v"],
+    cmd = """
+      set -eu
+      tmp=$@.tmp
+      : > $$tmp
+      for src in $(SRCS); do
+        case "$$src" in
+          */replace_async_ff.py) ;;
+          */dff.v) ;;
+          *) cat "$$src" >> $$tmp ;;
+        esac
+      done
+      python3 $(location replace_async_ff.py) $$tmp
+      mv $$tmp $@
+    """,
+)
+
+verilog_library(
+    name = "asap7_sim_cells",
+    srcs = [":asap7_sim_cell_models"],  # the genrule's asap7_sim_cell_models.v
+)
+
+synthesize_rtl(
+    name = "verilog_counter_synth_asap7",
+    standard_cells = "@org_theopenroadproject_asap7sc7p5t_28//:asap7-sc7p5t_rev28_rvt-ccs_tt",
+    target_clock_period_pico_seconds = CLK_PERIOD_PS,
+    top_module = "verilog_counter",
+    deps = [
+        "//tests:verilog_counter",
+    ],
+)
+
+verilog_library(
+    name = "verilog_counter_tb_lib",
+    srcs = [
+        "verilog_counter_tb.sv",
+    ],
+    deps = [
+        ":asap7_sim_cells",
+        ":verilog_counter_synth_asap7",  # synth netlist
+    ],
+)
+
+sim_genrules(
+    name = "verilog_counter_post_synth_sim",
+    extra_verilator_binary_vopts = [
+        "--trace-underscore",
+        "--no-trace-params",
+        "-Wno-SPECIFYIGN",
+    ],
+    module = ":verilog_counter_tb_lib",
+    top = "tb_verilog_counter",
+    trace = "saif",
+)
+
+post_sim_power_analysis(
+    name = "verilog_counter_post_synth_power_analysis",
+    clock_period = str(CLK_PERIOD_PS),
+    clock_port = "clk",
+    saif_file = ":verilog_counter_post_synth_sim_verilator_run",
+    saif_scope = "tb_verilog_counter/dut",
+    synthesized_rtl = ":verilog_counter_synth_asap7",
+)
