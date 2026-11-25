@@ -29,4 +29,15 @@ if replacements != 1:
     raise SystemExit(
         f"No DFFASRHQNx1_ASAP7_75t_R module instances; found {replacements}"
     )
+
+# The ASAP7 altos_dff UDP table is interpreted as multiple clocked drivers
+# by Verilator. Scope the waiver to that primitive definition only.
+pattern = r"(primitive\s+altos_dff\s*\(.*?endprimitive)"
+replacement = r"/* verilator lint_off MULTIDRIVEN */\n\1\n/* verilator lint_on MULTIDRIVEN */"
+text, replacements = re.subn(pattern, replacement, text, count=1, flags=re.S)
+if replacements != 1:
+    raise SystemExit(
+        f"No altos_dff primitive definition; found {replacements}"
+    )
+
 path.write_text(text, encoding="utf8")
