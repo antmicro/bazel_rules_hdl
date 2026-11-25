@@ -83,6 +83,8 @@ synthesize_rtl(
         include_temps = ["100C"],
         include_volts = ["1v65"],
     )[0][1],
+    strategy = "lms",
+    target_clock_period_pico_seconds = 10000,
     top_module = "verilog_counter",
     deps = [
         ":verilog_counter",

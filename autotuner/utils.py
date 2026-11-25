@@ -270,8 +270,9 @@ def read_config(file_name, algorithm):
 
         elm = {
                 "name": name,
-                "value_type": this["type"] ## Type in JSON matches Ax value type
                 }
+        # Ax needs str instead of string for types, all the other matches
+        elm["value_type"] = "str" if (this["type"] == "string") else this["type"]
         # Ax differentiate value and values, this is not a typo
         if "choices" in this:
             if len(this["choices"]) == 1: # Constant

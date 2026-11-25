@@ -34,8 +34,8 @@ def run_autotuner_tune(
         sdc = None,
         samples = 1,
         stop_after_step = "detailed_routing",
-        synth_additional_args = [],
-        synth_tcl = None,
+        frontend = "yosys",
+        parser_extra_commands = [],
         iterations = 1,
         jobs = 1,
         run_dir = None,
@@ -56,8 +56,8 @@ def run_autotuner_tune(
         sdc: sdc file for the design.
         samples: Number of samples per iteration.
         stop_after_step: Stop step: detailed_routing(default), global_routing, global_placement, floorplan, synthesis
-        synth_tcl: custom script for synthesis
-        synth_additional_args: extra parameters for synthesis
+        frontend: Which frontend to use for synthesis
+        parser_extra_commands: extra parameters for synthesis parser
         iterations: Number of successive iterations.
         jobs: number of maximum parallel jobs
         run_dir: Path to the execution directory
@@ -74,10 +74,10 @@ def run_autotuner_tune(
 
     # We hide the extra args arguments inside a JSON to avoid collision between arguments to the python script
     # and arguments to the synthesis script
-    if synth_additional_args:
-        json_args = json.encode(synth_additional_args)
+    if parser_extra_commands:
+        json_args = json.encode(parser_extra_commands)
         synth_extras = [
-            "--synth_additional_args",
+            "--parser_extra_commands",
             _shell_quote(json_args),
         ]
 
@@ -91,7 +91,7 @@ def run_autotuner_tune(
         "--cells %s" % str(native.package_relative_label(cells)),
         "--sdc %s" % str(native.package_relative_label(sdc)),
         "--stop_after_step %s" % stop_after_step,
-        "" if synth_tcl == None else "--synth_tcl %s" % synth_tcl,
+        "" if frontend == None else "--frontend %s" % frontend,
         "" if server == None else "--server %s" % server,
         "" if port == None else "--port %s" % port,
         "" if ppa_coeff == None else "--ppa_coeff %s" % ppa_coeff,

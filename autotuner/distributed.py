@@ -109,7 +109,7 @@ class AutoTunerBase(tune.Trainable):
         ## It follows the ongoing iteration counter
         experiment_dir = os.path.join(RUN_DIR, self.trial_name, f"iteration{self.training_iteration}")
         try:
-            result = self.flow.run_trial(self.params, experiment_dir=experiment_dir, stop_after_step=args.stop_after_step, synth_tcl=args.synth_tcl, synth_additional_args=args.synth_additional_args, save_logs=DEBUG)
+            result = self.flow.run_trial(self.params, experiment_dir=experiment_dir, stop_after_step=args.stop_after_step, synth_tcl=args.synth_tcl, parser_extra_commands=args.parser_extra_commands, save_logs=DEBUG)
         except (RuntimeError, ValueError) as err:
             print(f"[ERROR TUN-0100] {err}")
             return {METRIC: ERROR_METRIC, "effective_clk_period": ERROR_METRIC,
@@ -269,10 +269,17 @@ def parse_arguments():
         help="Custom TCL script for synthesis",
     )
     parser.add_argument(
-        "--synth_additional_args",
+        "--frontend",
+        type=str,
+        choices=["yosys", "slang", "surelog"],
+        default="yosys",
+        help="Synthesis parser.",
+    )
+    parser.add_argument(
+        "--parser_extra_commands",
         type=json.loads,
         default=None,
-        help="Extra arguments for synthesis in a JSON string",
+        help="Extra commands for synthesis parser in a JSON string",
     )
     # Experiment Setup
     parser.add_argument(
@@ -561,7 +568,7 @@ def main():
         try:
             reference_experiment = make_flow(slots=1).run_trial(
                 reference_params, experiment_dir=os.path.join(
-                RUN_DIR, "reference"), stop_after_step=args.stop_after_step, synth_tcl=args.synth_tcl, synth_additional_args=args.synth_additional_args, save_logs=DEBUG)
+                RUN_DIR, "reference"), stop_after_step=args.stop_after_step, synth_tcl=args.synth_tcl, parser_extra_commands=args.parser_extra_commands, frontend=args.frontend, save_logs=DEBUG)
             # Compute the score of the reference run
             reference_metrics = read_metrics(reference_experiment["reports"], args.stop_after_step)
         ## The reference run may fail, catch that error

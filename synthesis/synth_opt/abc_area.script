@@ -1,0 +1,65 @@
+fx
+mfs
+strash
+scorr
+refactor
+balance
+rewrite
+refactor
+balance
+rewrite
+rewrite -z
+balance
+refactor -z
+rewrite -z
+balance
+retime {D} -M 5
+strash
+scleanup
+fraig_store
+balance
+fraig_store
+balance
+rewrite
+refactor
+balance
+rewrite
+rewrite -z
+balance
+refactor -z
+rewrite -z
+balance
+fraig_store
+balance
+rewrite
+refactor
+balance
+rewrite
+rewrite -z
+balance
+refactor -z
+rewrite -z
+balance
+fraig_store
+balance
+rewrite
+refactor
+balance
+rewrite
+rewrite -z
+balance
+refactor -z
+rewrite -z
+balance
+fraig_store
+fraig_restore
+amap -m -Q 0.1 -F 20 -A 20 -C 5000
+retime {D}
+&get -n
+&st
+&dch
+&nf
+&put
+upsize {D}
+dnsize {D}
+stime -p

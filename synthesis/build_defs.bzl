@@ -14,11 +14,10 @@
 
 """Rules for synthesizing (System)Verilog code."""
 
-load("//flows:flows.bzl", "get_rlocation_path", "script_prefix")
 load("//pdk:build_defs.bzl", "StandardCellInfo")
 load("//verilog:defs.bzl", "VerilogInfo", "make_dag_entry", "make_verilog_info")
 
-# There are no rules to generate this provider, but it does provide the mechansim to build
+# There are no rules to generate this provider, but it does provide the mechanism to build
 # rules based on surelog in the open source world.
 UhdmInfo = provider(
     "Surelog/UHDM based RTL representation",
@@ -27,24 +26,12 @@ UhdmInfo = provider(
     },
 )
 
-ExternalSynthesisInfo = provider(
-    "Surelog/UHDM based RTL representation",
-    fields = {
-        "env": "Map of env variables",
-        "header_files": "Include Directories",
-        "inputs": "File inputs",
-        "uhdm_files": "UHDM files",
-        "verilog_files": "Verilog Inputs",
-        "yosys_script": "yosys script file",
-    },
-)
-
 SynthesisInfo = provider(
     "Information about the synthesis target",
     fields = {
         "log_file": "Log output file from the synthesis step.",
         "standard_cell_info": "The StandardCellInfo provider this target was synthesized against.",
-        "synthesized_netlist": "he structural verilog syntheized with standard_cell_info",
+        "synthesized_netlist": "The structural verilog synthesized with standard_cell_info",
         "top_module": "The name of the top level module of the synthesized netlist",
     },
 )
@@ -55,20 +42,11 @@ def _transitive_srcs(deps):
         transitive = [dep[VerilogInfo].dag for dep in deps],
     )
 
-def _create_flist(ctx, flist_tag, files, short_path = False):
-    flist = ctx.actions.declare_file("{}_{}.flist".format(flist_tag, ctx.attr.name))
-    if short_path:
-        ctx.actions.write(flist, "\n".join([f.short_path for f in files]) + "\n")
-    else:
-        ctx.actions.write(flist, "\n".join([f.path for f in files]) + "\n")
-    return flist
-
-def _create_inc_dir_flist(ctx, flist_tag, files, hdr_files):
-    """Create an include directory list files from files and header files"""
+def _create_inc_dir_list(files, hdr_files):
+    """Create an include directory list from files and header files"""
 
     ## Do it for both RTL files and headers, just in case the synthesis tool
     ## does not set the RTL verilog directories as part of include paths
-    flist = ctx.actions.declare_file("{}_{}.flist".format(flist_tag, ctx.attr.name))
 
     # Base include directories
     base_include_dirs = depset([f.dirname for f in (files + hdr_files)]).to_list()
@@ -83,11 +61,40 @@ def _create_inc_dir_flist(ctx, flist_tag, files, hdr_files):
             include_dirs.append("/".join([parts[j] for j in range(0, i + 1)]))
     include_dirs = depset(include_dirs).to_list()
 
-    ## Write to file
-    ctx.actions.write(flist, "\n".join([d for d in include_dirs]) + "\n")
-    return flist
+    return include_dirs
 
-def _synthesize_design_impl(ctx):
+def _yosys_script_header(ctx, yosys_stats = None):
+    """Generate a default header for all the Yosys scripts with common variables set"""
+    cmd = []
+    cmd.append("yosys -import")
+    cmd.append("set top %s" % ctx.attr.top_module)
+    if yosys_stats != None:
+        cmd.append("set yosys_stats %s" % yosys_stats.path)
+
+    ## Only 1 library expected for standard_cells
+    cmd.append("set stdcell_lib %s" % ctx.attr.standard_cells[StandardCellInfo].default_corner.liberty.path)
+
+    ## liberty will contain standard cells and all other potential liberty files
+    liberty = [ctx.attr.standard_cells]
+    if ctx.attr.extra_libs != []:
+        liberty.extend(ctx.attr.extra_libs)
+    lib_files = [lib[StandardCellInfo].default_corner.liberty for lib in liberty]
+    cmd.append("set liberty [list]")
+    for lib in lib_files:
+        cmd.append("lappend liberty %s" % lib.path)
+    cmd.append("foreach lib $liberty { read_liberty -lib $lib }")
+
+    return cmd, lib_files
+
+def _translate_logic(ctx, rtlil_netlist, log_file, standard_cell_black_box, parser_extra_commands, tool_extra_args):
+    """Yosys compilation logic, abstracted away from rule implementation"""
+
+    inputs = []
+
+    translate_common_tcl = ctx.actions.declare_file("{}_synthesis_translate_common.tcl".format(ctx.label.name))
+    rtlil_compile_script = ctx.actions.declare_file("{}_synthesis_translate.tcl".format(ctx.label.name))
+
+    ## Retrieve all RTL files and headers
     transitive_srcs = _transitive_srcs([dep for dep in ctx.attr.deps if VerilogInfo in dep])
     verilog_srcs = [verilog_info_struct.srcs for verilog_info_struct in transitive_srcs.to_list()]
     verilog_data = [verilog_info_struct.data for verilog_info_struct in transitive_srcs.to_list()]
@@ -95,168 +102,341 @@ def _synthesize_design_impl(ctx):
     verilog_hdrs = [verilog_info_struct.hdrs for verilog_info_struct in transitive_srcs.to_list()]
     verilog_hdr_files = [hdr for sub_tuple in verilog_hdrs for hdr in sub_tuple]
 
-    verilog_flist = _create_flist(
-        ctx,
-        flist_tag = "verilog",
-        files = verilog_files,
-    )
+    include_dirs = _create_inc_dir_list(verilog_files, verilog_hdr_files)
 
-    uhdm_files = depset(
-        [],
-        transitive = [dep[UhdmInfo].uhdm for dep in ctx.attr.deps if UhdmInfo in dep],
-    ).to_list()
-
-    uhdm_flist = _create_flist(
-        ctx,
-        flist_tag = "uhdm",
-        files = uhdm_files,
-    )
-
-    inc_dir_flist = _create_inc_dir_flist(
-        ctx,
-        flist_tag = "inc",
-        files = verilog_files,
-        hdr_files = verilog_hdr_files,
-    )
-
-    output_file_name = "{}_synth_output.v".format(ctx.attr.name)
-    if ctx.attr.output_file_name:
-        output_file_name = ctx.attr.output_file_name
-    output_file = ctx.actions.declare_file(output_file_name)
-    default_liberty_file = ctx.attr.standard_cells[StandardCellInfo].default_corner.liberty
-    additional_liberty_files = [corner.liberty for corner in ctx.attr.standard_cells[StandardCellInfo].corners]
-    if default_liberty_file in additional_liberty_files:
-        additional_liberty_files.remove(default_liberty_file)
-
-    synth_tcl = ctx.file.synth_tcl
-    abc_script = ctx.file.abc_script
-
-    inputs = []
     inputs.extend(verilog_files)
     inputs.extend(verilog_hdr_files)
 
-    inputs.append(verilog_flist)
-    inputs.append(uhdm_flist)
-    inputs.append(inc_dir_flist)
-    inputs.extend(uhdm_files)
-    inputs.append(synth_tcl)
-    inputs.append(abc_script)
-    inputs.append(default_liberty_file)
-    inputs.extend(additional_liberty_files)
-
-    if ctx.file.early_techmap:
-        inputs.append(ctx.file.early_techmap)
-
-    inputs.append(ctx.executable.abc_tool)
-
-    log_file = ctx.actions.declare_file("{}_yosys_output.log".format(ctx.attr.name))
-
-    yosys_stats = ctx.actions.declare_file("{}_yosys_stats.json".format(ctx.attr.name))
-    report_json = ctx.actions.declare_file("{}_synthesis_report.json".format(ctx.attr.name))
-
-    constr = ctx.actions.declare_file("{}_abc_constraints.constr".format(ctx.attr.name))
-    constr_contents = ""
-    default_driver_cell = getattr(ctx.attr.standard_cells[StandardCellInfo], "default_input_driver_cell", "")
-    if default_driver_cell:
-        constr_contents = "set_driving_cell {}\n".format(default_driver_cell)
-    default_load = getattr(ctx.attr.standard_cells[StandardCellInfo], "default_output_load", "")
-    if default_load:
-        constr_contents += "set_load {}\n".format(default_load)
-
-    ctx.actions.write(constr, constr_contents)
-    inputs.append(constr)
-
-    args = ctx.actions.args()
-    args.add("-q")  # quiet mode only errors printed to stderr
-    args.add("-Q")  # Don't print header
-    args.add_all("-l", [log_file])  # put output in log file
-    args.add_all("-c", [synth_tcl])  # run synthesis tcl script
-    if ctx.attr.extra_tcl_command:
-        args.add("-p", ctx.attr.extra_tcl_command)
-    if ctx.attr.autoidx_seed:
-        args.add("--autoidx", ctx.attr.autoidx_seed)
-    if ctx.attr.hash_seed:
-        args.add("--hash-seed", ctx.attr.hash_seed)
-
-    dont_use_args = ""
-    or_config = ctx.attr.standard_cells[StandardCellInfo].open_road_configuration
-    if or_config:
-        for dont_use_pattern in or_config.do_not_use_cell_list:
-            dont_use_args += " -dont_use {} ".format(dont_use_pattern)
-
-    if ctx.attr.verilog_defines:
-        for define in ctx.attr.verilog_defines:
-            args.add(define)
-
-    # Validate frontend option
-    if (ctx.attr.frontend not in ["yosys", "surelog", "slang"]):
-        fail("synthesize_rtl: Expected \"frontend\" to be one of \"yosys\" \"surelog\", \"slang\", but received {}.".format(ctx.attr.frontend))
-
-    standard_cell_black_box = ctx.actions.declare_file("{}_stdcells_blackbox.v".format(ctx.attr.name))
-    script_env_files = {
-        "ABC_SCRIPT": abc_script,
-        "ADDITIONAL_LIBERTIES": additional_liberty_files,
-        "CONSTR": constr,
-        "DONT_USE_ARGS": dont_use_args,
-        "FLIST": verilog_flist,
-        "FRONTEND": ctx.attr.frontend,
-        "INC_DIR_FLIST": inc_dir_flist,
-        "LIBERTY": default_liberty_file,
-        "OUTPUT": output_file,
-        "STANDARD_CELL_BLACK_BOX": standard_cell_black_box,
-        "STATS_JSON": yosys_stats,
-        "SYNTH_ADDITIONAL_ARGS": ctx.attr.synth_additional_args,
-        "TOP": ctx.attr.top_module,
-        "UHDM_FLIST": uhdm_flist,
+    # Use a dictionnary to fill the TCL script
+    substitutions = {
+        "{{INCDIR}}": " ".join(include_dirs),
+        "{{PARSER_EXTRA_COMMANDS}}": " ".join(parser_extra_commands),
+        "{{RTLIL_NETLIST}}": rtlil_netlist.path,
+        "{{RTL_FILES}}": " ".join([f.path for f in verilog_files]),
+        "{{STDCELL_BLACKBOX}}": standard_cell_black_box.path,
+        "{{STDCELL_LIB}}": ctx.attr.standard_cells[StandardCellInfo].default_corner.liberty.path,
+        "{{TOP}}": ctx.attr.top_module,
     }
 
-    if ctx.attr.target_clock_period_pico_seconds:
-        script_env_files["CLOCK_PERIOD"] = str(ctx.attr.target_clock_period_pico_seconds)
+    inputs.append(ctx.attr.standard_cells[StandardCellInfo].default_corner.liberty)
 
-    if or_config.tie_low_port:
-        script_env_files["TIELO_CELL_AND_PORT"] = str(or_config.tie_low_port)
+    # Exttra liberty files
+    extra_libs = ""
+    if ctx.attr.extra_libs != []:
+        lib_files = [lib[StandardCellInfo].default_corner.liberty for lib in ctx.attr.extra_libs]
+        for lib in lib_files:
+            extra_libs += "lappend liberty %s\n" % lib.path
+            inputs.append(lib)
+    substitutions["{{EXTRA_LIBS}}"] = extra_libs
 
-    if or_config.tie_high_port:
-        script_env_files["TIEHI_CELL_AND_PORT"] = str(or_config.tie_high_port)
+    # Define need custom pre-processing
+    macro_names = []
+    macro_values = []
+    for d in ctx.attr.verilog_defines:
+        macro_name, _, macro_value = d.partition("=")
+        macro_value = macro_value or str(1)
+        macro_names.append(macro_name)
+        macro_values.append(macro_value)
+    substitutions["{{MACRO_NAMES}}"] = " ".join(macro_names)
+    substitutions["{{MACRO_VALUES}}"] = " ".join(macro_values)
 
-    ha_fa_mapping = or_config.ha_fa_mapping
-    if ha_fa_mapping:
-        ha_fa_mapping_path = ha_fa_mapping[DefaultInfo].files.to_list()[0].path
-        script_env_files["ADDER_MAPPING"] = str(ha_fa_mapping_path)
-        inputs.append(ha_fa_mapping[DefaultInfo].files.to_list()[0])
+    if ctx.attr.frontend == "custom":
+        inputs.append(ctx.file.translate_tcl)
+        substitutions["{{TRANSLATE_TCL}}"] = ctx.file.translate_tcl.path
 
+    # Generate a common TCL script containing all the variables
+    template_common = None
+    template_translate = None
+    for script in ctx.files._synth_tcl_templates:
+        if script.basename == "translate_%s.tcl" % ctx.attr.frontend:
+            template_translate = script
+        elif script.basename == "translate_common.tcl":
+            template_common = script
+    if template_common == None or template_translate == None:
+        fail("ERROR: failed to retrieve TCL templates")
+
+    # Common translate, same for all
+    ctx.actions.expand_template(
+        template = template_common,
+        output = translate_common_tcl,
+        substitutions = substitutions,
+    )
+
+    inputs.append(translate_common_tcl)
+
+    substitutions["{{TRANSLATE_COMMON_TCL}}"] = translate_common_tcl.path
+
+    # Compile, frontend specific
+    ctx.actions.expand_template(
+        template = template_translate,
+        output = rtlil_compile_script,
+        substitutions = substitutions,
+    )
+
+    ## Yosys arguments
+    args = []
+    args.append("-q")  # quiet mode only errors printed to stderr
+    args.append("-Q")  # Don't print header
+    args.extend(["-l", log_file.path])  # put output in log file
+    args.extend(tool_extra_args)
+
+    # Main TCL script
+    args.extend(["-c", rtlil_compile_script.path])
+    inputs.append(rtlil_compile_script)
+
+    ## Yosys runfiles
     tcl_library_dir = ""
     yosys_runfiles = ctx.attr.yosys_tool[DefaultInfo].default_runfiles.files.to_list()
     for f in yosys_runfiles:
         if not tcl_library_dir and f.path.endswith("library/init.tcl"):
             tcl_library_dir = f.dirname
-
+    inputs.extend(yosys_runfiles)
     env = {
-        "ABC": ctx.executable.abc_tool.path,
         "TCL_LIBRARY": tcl_library_dir,
     }
 
+    ctx.actions.run(
+        outputs = [log_file, rtlil_netlist, standard_cell_black_box],
+        inputs = inputs,
+        arguments = args,
+        env = env,
+        executable = ctx.executable.yosys_tool,
+        mnemonic = "TranslateRTL",
+    )
+
+def _translate_impl(ctx):
+    """RTL compilation and translation into RTLIL"""
+    rtlil_filename = "{}_netlist.rtlil".format(ctx.label.name)
+    if ctx.attr.output_file_name:
+        rtlil_filename = ctx.attr.output_file_name
+    rtlil_netlist = ctx.actions.declare_file(rtlil_filename)
+    log_file = ctx.actions.declare_file("{}_synthesis_translate.log".format(ctx.label.name))
+    standard_cell_black_box = ctx.actions.declare_file("{}_stdcells_blackbox.v".format(ctx.label.name))
+    parser_commands = ctx.attr.parser_extra_commands
+    tool_extra_args = ctx.attr.tool_extra_args
+
+    _translate_logic(ctx, rtlil_netlist, log_file, standard_cell_black_box, parser_commands, tool_extra_args)
+
+    return [
+        DefaultInfo(
+            runfiles = ctx.runfiles(files = [rtlil_netlist]),
+            files = depset([rtlil_netlist]),
+        ),
+        OutputGroupInfo(
+            logs = depset([log_file]),
+            blackbox = depset([standard_cell_black_box]),
+        ),
+    ]
+
+def _synth_opt_main_script(ctx):
+    synth_opt_tcl = None
+    if ctx.attr.strategy == "custom":
+        synth_opt_tcl = ctx.file.custom_synth_opt_tcl
+    else:
+        for script in ctx.files._synth_opt_scripts:
+            if script.basename == "opt_%s.tcl" % ctx.attr.strategy:
+                synth_opt_tcl = script
+    if synth_opt_tcl == None:
+        fail("Could not find the main synthesis optimization script")
+    return synth_opt_tcl
+
+def _synth_opt_impl(ctx):
+    """Optimization on RTLIL representation and generation of the verilog netlist"""
+    netlist_filename = "{}_netlist.v".format(ctx.label.name)
+    if ctx.attr.verilog_netlist_name:
+        netlist_filename = ctx.attr.verilog_netlist_name
+    verilog_netlist = ctx.actions.declare_file(netlist_filename)
+    log_file = ctx.actions.declare_file("{}_synthesis_opt.log".format(ctx.label.name))
+    yosys_stats = ctx.actions.declare_file("{}_yosys_stats.json".format(ctx.label.name))
+    rtlil_netlist = ctx.file.rtlil_netlist
+    extra_inputs = list(ctx.files._synth_opt_scripts)
+    if ctx.attr.strategy == "custom":
+        extra_inputs.extend(ctx.files.custom_srcs)
+
+    # Select the main optimization script
+    synth_opt_tcl = _synth_opt_main_script(ctx)
+
+    _synth_opt_logic(ctx, rtlil_netlist, ctx.attr.strategy, synth_opt_tcl, extra_inputs, verilog_netlist, log_file, yosys_stats, ctx.attr.tool_extra_args)
+
+    return [
+        DefaultInfo(
+            runfiles = ctx.runfiles(files = [verilog_netlist]),
+            files = depset([verilog_netlist]),
+        ),
+        OutputGroupInfo(
+            logs = depset([log_file]),
+            auxiliary = depset([yosys_stats]),
+        ),
+        SynthesisInfo(
+            standard_cell_info = ctx.attr.standard_cells[StandardCellInfo],
+            synthesized_netlist = verilog_netlist,
+            top_module = ctx.attr.top_module,
+            log_file = log_file,
+        ),
+        make_verilog_info(
+            new_entries = [make_dag_entry(
+                label = ctx.label,
+                srcs = [verilog_netlist],
+                hdrs = [],
+                data = [],
+                deps = [],
+                tags = [],
+                plis = [],
+            )],
+        ),
+    ]
+
+def _synth_opt_logic(ctx, rtlil_netlist, strategy, synth_opt_tcl, extra_inputs, verilog_netlist, log_file, yosys_stats, tool_extra_args):
+    syn_opt_script = ctx.actions.declare_file("{}_synthesis_opt.tcl".format(ctx.label.name))
+
+    inputs = [rtlil_netlist]
+
+    ## Generate the translation commands
+    cmd, liberty = _yosys_script_header(ctx, yosys_stats)
+    inputs.extend(liberty)
+    cmd.append("read_rtlil %s" % rtlil_netlist.path)
+    cmd.append("hierarchy -check -top $top")
+
+    ## Pass the reference clock period
+    cmd.append("set period_ps %s" % ctx.attr.target_clock_period_pico_seconds)
+
+    # Openroad configuration for PDK information
+    or_config = ctx.attr.standard_cells[StandardCellInfo].open_road_configuration
+
+    env = {}
+
+    cmd.append("set dont_use_args [list]")
+    if or_config:
+        for dont_use_pattern in or_config.do_not_use_cell_list:
+            cmd.append("lappend dont_use_args -dont_use %s" % dont_use_pattern)
+
+    if strategy != "custom":
+        # Constr for ABC, always generated
+        std_cell = ctx.attr.standard_cells
+        constr = ctx.actions.declare_file("{}_abc_constraints.constr".format(ctx.label.name))
+        constr_contents = ""
+        default_driver_cell = getattr(std_cell[StandardCellInfo], "default_input_driver_cell", "")
+        if default_driver_cell:
+            constr_contents = "set_driving_cell {}\n".format(default_driver_cell)
+        default_load = getattr(std_cell[StandardCellInfo], "default_output_load", "")
+        if default_load:
+            constr_contents += "set_load {}\n".format(default_load)
+        ctx.actions.write(constr, constr_contents)
+        inputs.append(constr)
+        cmd.append("set abc_constr %s" % constr.path)
+
+        # Adder mapping
+        if or_config:
+            ha_fa_mapping = or_config.ha_fa_mapping
+            if ha_fa_mapping:
+                ha_fa_mapping_path = ha_fa_mapping[DefaultInfo].files.to_list()[0].path
+                env["ADDER_MAPPING"] = "1"
+                inputs.append(ha_fa_mapping[DefaultInfo].files.to_list()[0])
+                cmd.append("set adder_mapping %s" % ha_fa_mapping_path)
+
+        # ABC script
+        abc_script_file = None
+        for f in ctx.files._synth_opt_scripts:
+            if f.basename == "abc_%s.script" % strategy:
+                abc_script_file = f
+        if abc_script_file == None:
+            fail("ERROR: abc script not found under name abc_%s.script" % strategy)
+        cmd.append("set abc_script %s" % abc_script_file.path)
+
+    # ABC always added to sources, used or not
+    inputs.append(ctx.executable.abc_tool)
+
+    cmd.append("source %s" % synth_opt_tcl.path)
+
+    # Tie port, valid for all strategies
+    if or_config:
+        if or_config.tie_low_port or or_config.tie_high_port:
+            cmd_string = "hilomap -singleton "
+            if or_config.tie_low_port:
+                cmd_string += "-locell "
+                tielow_cells = str(or_config.tie_low_port).split("/")
+                for cell in tielow_cells:
+                    cmd_string += "%s " % cell
+            if or_config.tie_high_port:
+                cmd_string += "-hicell "
+                tiehi_cells = str(or_config.tie_high_port).split("/")
+                for cell in tiehi_cells:
+                    cmd_string += "%s " % cell
+            cmd.append(cmd_string)
+        inputs.extend(extra_inputs)
+
+    # Output and reporting
+    cmd.append("write_verilog %s" % verilog_netlist.path)
+    cmd.append("""
+stat -liberty $stdcell_lib
+tee -q -o $yosys_stats stat -liberty $stdcell_lib -json
+yosys log Structured stats: $yosys_stats
+read_liberty -lib -ignore_miss_func $stdcell_lib
+ltp -noff $top
+yosys log -n "Flop count: "
+yosys select -count t:*__df* t:DF* t:*_DFF* t:*_SDFF* t:*_ADFF* t:*dff
+yosys log Liberty: $stdcell_lib
+""")
+
+    # Yosys script
+    ctx.actions.write(syn_opt_script, "\n".join(cmd))
+
+    ## Yosys runfiles
+    tcl_library_dir = ""
+    yosys_runfiles = ctx.attr.yosys_tool[DefaultInfo].default_runfiles.files.to_list()
+    for f in yosys_runfiles:
+        if not tcl_library_dir and f.path.endswith("library/init.tcl"):
+            tcl_library_dir = f.dirname
     inputs.extend(yosys_runfiles)
+    env["ABC"] = ctx.executable.abc_tool.path
+    env["TCL_LIBRARY"] = tcl_library_dir
 
-    if ctx.file.early_techmap:
-        script_env_files["EARLY_TECHMAP"] = ctx.file.early_techmap
-
-    for k, v in script_env_files.items():
-        if type(v) == "File":
-            env[k] = v.path
-        elif type(v) == "list" and all([type(f) == "File" for f in v]):
-            env[k] = ",".join([f.path for f in v])  # List of File to comma-joined file paths.
-        else:
-            env[k] = v
+    ## Yosys arguments
+    args = []
+    args.append("-q")  # quiet mode only errors printed to stderr
+    args.append("-Q")  # Don't print header
+    args.extend(["-l", log_file.path])  # put output in log file
+    args.extend(tool_extra_args)
+    args.extend(["-c", syn_opt_script.path])
+    inputs.append(syn_opt_script)
 
     ctx.actions.run(
-        outputs = [output_file, log_file, yosys_stats, standard_cell_black_box],
+        outputs = [log_file, verilog_netlist, yosys_stats],
         inputs = inputs,
-        arguments = [args],
-        executable = ctx.executable.yosys_tool,
+        arguments = args,
         env = env,
-        mnemonic = "SynthesizingRTL",
+        executable = ctx.executable.yosys_tool,
+        mnemonic = "OptimizeRTL",
     )
+
+def _synthesize_design_impl(ctx):
+    rtlil_filename = "{}_netlist.rtlil".format(ctx.label.name)
+    rtlil_netlist = ctx.actions.declare_file(rtlil_filename)
+    standard_cell_black_box = ctx.actions.declare_file("{}_stdcells_blackbox.v".format(ctx.label.name))
+
+    translate_log_file = ctx.actions.declare_file("{}_synthesis_translate.log".format(ctx.label.name))
+    parser_commands = ctx.attr.parser_extra_commands
+    tool_extra_args = ctx.attr.tool_extra_args
+
+    _translate_logic(ctx, rtlil_netlist, translate_log_file, standard_cell_black_box, parser_commands, tool_extra_args)
+
+    netlist_filename = "{}_netlist.v".format(ctx.label.name)
+    if ctx.attr.verilog_netlist_name:
+        netlist_filename = ctx.attr.verilog_netlist_name
+    verilog_netlist = ctx.actions.declare_file(netlist_filename)
+
+    syn_opt_log_file = ctx.actions.declare_file("{}_synthesis_opt.log".format(ctx.label.name))
+    yosys_stats = ctx.actions.declare_file("{}_yosys_stats.json".format(ctx.label.name))
+
+    # Select the main optimization script
+    extra_inputs = list(ctx.files._synth_opt_scripts)
+    synth_opt_tcl = _synth_opt_main_script(ctx)
+    if ctx.attr.strategy == "custom":
+        extra_inputs.extend(ctx.files.custom_srcs)
+
+    _synth_opt_logic(ctx, rtlil_netlist, ctx.attr.strategy, synth_opt_tcl, extra_inputs, verilog_netlist, syn_opt_log_file, yosys_stats, tool_extra_args)
+
+    report_json = ctx.actions.declare_file("{}_synthesis_report.json".format(ctx.label.name))
 
     ctx.actions.run(
         executable = ctx.executable._postprocess_json,
@@ -271,37 +451,58 @@ def _synthesize_design_impl(ctx):
         mnemonic = "PostProcessJSON",
     )
 
-    benchmark_file = _benchmark_synth(ctx, log_file)
+    benchmark_file = _benchmark_synth(ctx, syn_opt_log_file)
 
     return [
         DefaultInfo(
-            runfiles = ctx.runfiles(files = [output_file, log_file, benchmark_file, yosys_stats, report_json]),
-            files = depset([output_file, log_file, benchmark_file, report_json]),
+            runfiles = ctx.runfiles(files = [verilog_netlist]),
+            files = depset([verilog_netlist]),
+        ),
+        OutputGroupInfo(
+            logs = depset([translate_log_file, syn_opt_log_file]),
+            reports = depset([report_json, benchmark_file]),
+            auxiliary = depset([yosys_stats]),
+            blackbox = depset([standard_cell_black_box]),
         ),
         SynthesisInfo(
             standard_cell_info = ctx.attr.standard_cells[StandardCellInfo],
-            synthesized_netlist = output_file,
+            synthesized_netlist = verilog_netlist,
             top_module = ctx.attr.top_module,
-            log_file = log_file,
-        ),
-        ExternalSynthesisInfo(
-            env = script_env_files,
-            yosys_script = synth_tcl,
-            inputs = inputs,
-            verilog_files = verilog_files,
-            header_files = verilog_hdr_files,
-            uhdm_files = uhdm_files,
+            log_file = syn_opt_log_file,
         ),
         make_verilog_info(
             new_entries = [make_dag_entry(
                 label = ctx.label,
-                srcs = [output_file],
+                srcs = [verilog_netlist],
                 hdrs = [],
                 data = [],
                 deps = [],
                 tags = [],
                 plis = [],
             )],
+        ),
+    ]
+
+def _reformat_json_impl(ctx):
+    """Convert Yosys-generated JSON report into expected report_json format"""
+
+    report_json = ctx.actions.declare_file("{}_synthesis_report.json".format(ctx.label.name))
+
+    ctx.actions.run(
+        executable = ctx.executable._postprocess_json,
+        inputs = [ctx.file.yosys_stats],
+        outputs = [report_json],
+        arguments = [
+            "--yosys_stats",
+            ctx.file.yosys_stats.path,
+            "--report_json",
+            report_json.path,
+        ],
+        mnemonic = "PostProcessJSON",
+    )
+    return [
+        DefaultInfo(
+            files = depset([report_json]),
         ),
     ]
 
@@ -325,7 +526,7 @@ def _benchmark_synth(ctx, synth_log_file):
     ]
     awk_cmds = [
         "area=$({cat} {log} | awk '/Chip area for/ {{ print $6; }}');",
-        "cells=$({cat} {log} | tac | awk '/Number of cells/ {{ print $4; exit }}');",
+        "cells=$({cat} {log} | tac | awk '/Number of cells/ {{ print $4; exit }} $NF == \"cells\" && $1 ~ /^[0-9]+$/ {{ print $1; exit }}');",
         "flops=$({cat} {log} | awk '/Flop count:/ {{ print $3 }}');",
         "ltp=$({cat} {log} | awk -F '[=)]' '/Longest topological path/ {{ print $2}}');",
     ]
@@ -350,163 +551,229 @@ def _benchmark_synth(ctx, synth_log_file):
     )
     return benchmark_file
 
-def _synthesize_binary_impl(ctx):
-    script = ""
-    external_info = ctx.attr.synthesize_rtl_rule[ExternalSynthesisInfo]
-
-    env = dict(external_info.env)
-    env["FLIST"] = _create_flist(
-        ctx,
-        flist_tag = "verilog",
-        files = external_info.verilog_files,
-        short_path = True,
-    )
-
-    env["UHDM_FLIST"] = _create_flist(
-        ctx,
-        flist_tag = "uhdm",
-        files = external_info.uhdm_files,
-        short_path = True,
-    )
-
-    # Write include directories to inc_*.flist file
-    env["INC_DIR_FLIST"] = _create_inc_dir_flist(
-        ctx,
-        flist_tag = "inc",
-        files = external_info.verilog_files,
-        hdr_files = external_info.header_files,
-    )
-
-    env["OUTPUT"] = "/tmp/{}.v".format(ctx.attr.name)
-
-    script += script_prefix + "\n"
-    script += 'YOSYS=$(rlocation "at_clifford_yosys/yosys")\n'
-    script += 'ABC_BIN=$(rlocation "abc/abc_bin")\n'
-    script += 'TCL_INIT=$(rlocation "tcl_lang/library/init.tcl")\n'
-    script += 'export ABC="$ABC_BIN"\n'
-    script += 'export TCL_LIBRARY=$(dirname "$TCL_INIT")\n'
-
-    for k, v in env.items():
-        script += "export {}='{}'\n".format(k, v.short_path if type(v) == "File" else v)
-
-    synth_tcl_path = get_rlocation_path(ctx, external_info.yosys_script)
-    script += "${{PREFIX_COMMAND}} \"$YOSYS\" -c $(rlocation \"{}\")\n".format(synth_tcl_path)
-
-    binary = ctx.actions.declare_file("{}_synth_binary.sh".format(ctx.attr.name))
-    ctx.actions.write(binary, script, is_executable = True)
-
-    runfiles = ctx.runfiles(files = [external_info.yosys_script]).merge_all([
-        ctx.runfiles(external_info.inputs),
-        ctx.runfiles([env["UHDM_FLIST"], env["FLIST"]], env["INC_DIR_FLIST"]),
-        ctx.attr._runfiles_lib[DefaultInfo].default_runfiles,
-        ctx.attr.yosys_tool[DefaultInfo].default_runfiles,
-        ctx.attr.abc_tool[DefaultInfo].default_runfiles,
-    ])
-
-    return [
-        DefaultInfo(
-            executable = binary,
-            runfiles = runfiles,
-        ),
-    ]
-
-synthesis_binary = rule(
-    implementation = _synthesize_binary_impl,
+translate = rule(
+    implementation = _translate_impl,
     attrs = {
-        "abc_tool": attr.label(
-            default = Label("@abc//:abc_bin"),
-            executable = True,
-            cfg = "target",
-        ),
-        "synthesize_rtl_rule": attr.label(
-            providers = [ExternalSynthesisInfo],
-        ),
-        "yosys_tool": attr.label(
-            default = Label("@at_clifford_yosys//:yosys"),
-            executable = True,
-            cfg = "target",
-        ),
-        "_runfiles_lib": attr.label(
-            default = Label("@bazel_tools//tools/bash/runfiles"),
-        ),
-    },
-    executable = True,
-)
-
-synthesize_rtl = rule(
-    implementation = _synthesize_design_impl,
-    attrs = {
-        "abc_script": attr.label(
-            default = Label("//synthesis:abc.script"),
-            allow_single_file = True,
-            doc = "ABC script",
-        ),
-        "abc_tool": attr.label(
-            default = Label("@abc//:abc_bin"),
-            executable = True,
-            cfg = "exec",
-        ),
-        "adder_mapping": attr.label(
-            allow_single_file = True,
-            doc = "Verilog file that maps yosys adder to PDK adders.",
-        ),
-        "autoidx_seed": attr.int(
-            mandatory = False,
-            doc = "Controls the starting point for the autoidx pass; introduces additional variability into the synthesis logic.",
-        ),
         "deps": attr.label_list(
             providers = [[VerilogInfo], [UhdmInfo]],
         ),
-        "early_techmap": attr.label(
-            allow_single_file = True,
-            doc = "verilog/system verilog file for early techmap process",
-            mandatory = False,
-        ),
-        "extra_tcl_command": attr.string(
-            default = "",
+        "extra_libs": attr.label_list(
+            providers = [StandardCellInfo],
+            doc = "Extra Liberty file required",
+            default = [],
         ),
         "frontend": attr.string(
-            values = ["yosys", "surelog", "slang"],
+            values = ["yosys", "surelog", "slang", "custom"],
             default = "yosys",
-            doc = "Frontend tool used to parse the design. Possible values are: yosys, surelog, slang",
-        ),
-        "hash_seed": attr.int(
-            mandatory = False,
-            doc = "Salts the hashes used in Yosys for (e.g.) iteration order; introduces additional variability into the synthesis logic.",
+            doc = "Frontend tool used to parse the design. Possible values are: yosys, surelog, slang, custom (user provided script)",
         ),
         "output_file_name": attr.string(
             doc = "The output file name.",
         ),
-        "srcs": attr.label_list(
-            allow_files = True,
+        "parser_extra_commands": attr.string_list(
+            default = [],
+            doc = "Extra commands for the frontend parser",
         ),
         "standard_cells": attr.label(
             providers = [StandardCellInfo],
             default = "@com_google_skywater_pdk_sky130_fd_sc_hd//:sky130_fd_sc_hd",
         ),
-        "synth_additional_args": attr.string(
-            mandatory = False,
-            doc = "Additional args for the Yosys synth pass",
-            default = "",
-        ),
-        "synth_tcl": attr.label(
-            default = Label("//synthesis:synth.tcl"),
-            allow_single_file = True,
-            doc = "Tcl synthesis script compatible with the environment-variable API of synth.tcl",
-        ),
-        "target_clock_period_pico_seconds": attr.int(
-            doc = "target clock period in picoseconds",
+        "tool_extra_args": attr.string_list(
+            default = [],
+            doc = "Extra command-line arguments for yosys",
         ),
         "top_module": attr.string(
             default = "top",
+            doc = "Name of RTL top module",
+        ),
+        "translate_tcl": attr.label(
+            default = None,
+            allow_single_file = True,
+            doc = "Tcl script replacing the generated one for translation",
         ),
         "verilog_defines": attr.string_list(
-            doc = "Verilog defines to pass to the synthesis tool.",
+            doc = "Verilog defines to pass to the synthesis tool. Expect a list of strings like \"NAME[=VALUE]\"",
         ),
         "yosys_tool": attr.label(
             default = Label("@at_clifford_yosys//:yosys"),
             executable = True,
             cfg = "exec",
+        ),
+        "_synth_tcl_templates": attr.label_list(
+            allow_files = True,
+            default = [Label("//synthesis/translate:synth_tcl_scripts")],
+            doc = "Default scripts used for templating",
+        ),
+    },
+)
+
+synth_opt = rule(
+    implementation = _synth_opt_impl,
+    attrs = {
+        "abc_tool": attr.label(
+            default = Label("@abc//:abc_bin"),
+            executable = True,
+            cfg = "exec",
+        ),
+        "custom_srcs": attr.label_list(
+            allow_files = True,
+            default = [],
+            doc = "User-provided extra input files for optimization",
+        ),
+        "custom_synth_opt_tcl": attr.label(
+            default = None,
+            allow_single_file = True,
+            doc = "User-provided custom optimization TCL script",
+        ),
+        "extra_libs": attr.label_list(
+            providers = [StandardCellInfo],
+            doc = "Extra Liberty file required",
+            default = [],
+        ),
+        "rtlil_netlist": attr.label(
+            allow_single_file = True,
+            mandatory = True,
+            doc = "RTLIL netlist",
+        ),
+        "standard_cells": attr.label(
+            providers = [StandardCellInfo],
+            default = "@com_google_skywater_pdk_sky130_fd_sc_hd//:sky130_fd_sc_hd",
+        ),
+        "strategy": attr.string(
+            values = ["basic", "lms", "lite", "speed", "area", "custom"],
+            default = "basic",
+            doc = "Optimization strategy. basic by default, set to custom if you provide your own TCL script",
+        ),
+        "target_clock_period_pico_seconds": attr.int(
+            default = 100000,
+            doc = "target clock period in picoseconds",
+        ),
+        "tool_extra_args": attr.string_list(
+            default = [],
+            doc = "Extra command-line arguments for yosys",
+        ),
+        "top_module": attr.string(
+            default = "top",
+            doc = "Name of the RTL top module",
+        ),
+        "verilog_netlist_name": attr.string(
+            doc = "The verilog netlist file name.",
+        ),
+        "yosys_tool": attr.label(
+            default = Label("@at_clifford_yosys//:yosys"),
+            executable = True,
+            cfg = "exec",
+        ),
+        "_synth_opt_scripts": attr.label_list(
+            allow_files = True,
+            default = [Label("//synthesis/synth_opt:synth_opt_scripts")],
+            doc = "Default scripts used for optimization",
+        ),
+        "_synth_tcl_templates": attr.label_list(
+            allow_files = True,
+            default = [Label("//synthesis/translate:synth_tcl_templates")],
+            doc = "Default scripts used for templating",
+        ),
+    },
+)
+
+synthesize_rtl = rule(
+    implementation = _synthesize_design_impl,
+    attrs = {
+        "abc_tool": attr.label(
+            default = Label("@abc//:abc_bin"),
+            executable = True,
+            cfg = "exec",
+        ),
+        "custom_srcs": attr.label_list(
+            allow_files = True,
+            default = [],
+            doc = "User-provided extra input files for optimization",
+        ),
+        "custom_synth_opt_tcl": attr.label(
+            default = None,
+            allow_single_file = True,
+            doc = "User-provided custom optimization TCL script",
+        ),
+        "deps": attr.label_list(
+            providers = [[VerilogInfo], [UhdmInfo]],
+        ),
+        "extra_libs": attr.label_list(
+            providers = [StandardCellInfo],
+            doc = "Extra Liberty file required",
+            default = [],
+        ),
+        "frontend": attr.string(
+            values = ["yosys", "surelog", "slang", "custom"],
+            default = "yosys",
+            doc = "Frontend tool used to parse the design. Possible values are: yosys, surelog, slang, custom (user-provided script)",
+        ),
+        "parser_extra_commands": attr.string_list(
+            default = [],
+            doc = "Extra commands for the frontend parser",
+        ),
+        "standard_cells": attr.label(
+            providers = [StandardCellInfo],
+            default = "@com_google_skywater_pdk_sky130_fd_sc_hd//:sky130_fd_sc_hd",
+        ),
+        "strategy": attr.string(
+            values = ["basic", "lms", "lite", "speed", "area", "custom"],
+            default = "basic",
+            doc = "Optimization strategy. basic by default, set to custom if you provide your own TCL script",
+        ),
+        "target_clock_period_pico_seconds": attr.int(
+            default = 100000,
+            doc = "target clock period in picoseconds",
+        ),
+        "tool_extra_args": attr.string_list(
+            default = [],
+            doc = "Extra command-line arguments for yosys",
+        ),
+        "top_module": attr.string(
+            default = "top",
+            doc = "Name of RTL top module",
+        ),
+        "translate_tcl": attr.label(
+            default = None,
+            allow_single_file = True,
+            doc = "Tcl script replacing the generated one for translation",
+        ),
+        "verilog_defines": attr.string_list(
+            doc = "Verilog defines to pass to the synthesis tool. Expect a list of strings like \"NAME[=VALUE]\"",
+        ),
+        "verilog_netlist_name": attr.string(
+            doc = "Name of the generated verilog netlist.",
+        ),
+        "yosys_tool": attr.label(
+            default = Label("@at_clifford_yosys//:yosys"),
+            executable = True,
+            cfg = "exec",
+        ),
+        "_postprocess_json": attr.label(
+            default = Label("//synthesis:postprocess_json"),
+            executable = True,
+            cfg = "exec",
+        ),
+        "_synth_opt_scripts": attr.label_list(
+            allow_files = True,
+            default = [Label("//synthesis/synth_opt:synth_opt_scripts")],
+            doc = "Default scripts used for optimization",
+        ),
+        "_synth_tcl_templates": attr.label_list(
+            allow_files = True,
+            default = [Label("//synthesis/translate:synth_tcl_templates")],
+            doc = "Default scripts used for templating",
+        ),
+    },
+)
+
+reformat_json = rule(
+    implementation = _reformat_json_impl,
+    attrs = {
+        "yosys_stats": attr.label(
+            allow_single_file = True,
+            mandatory = True,
+            doc = "JSON generated by Yosys",
         ),
         "_postprocess_json": attr.label(
             default = Label("//synthesis:postprocess_json"),

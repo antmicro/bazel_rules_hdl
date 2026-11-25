@@ -47,11 +47,13 @@ def _bool(v):
     return bool(v)
 
 def _str(v):
-    return str(v.strip())
+    return str(v).strip()
 
 
 PARAMS = {
     "synthesize_rtl.target_clock_period_pico_seconds": _int,
+    "synthesize_rtl.strategy": _str,
+    "synthesize_rtl.frontend": _str,
     "place_and_route.target_die_utilization_percentage": _float_str,
     "place_and_route.placement_density": _float_str,
     "place_and_route.core_padding_microns": _int,
@@ -64,6 +66,8 @@ PARAMS = {
 BASE = {
     "synthesize_rtl": {
         "target_clock_period_pico_seconds": 10000,
+        "strategy": "basic",
+        "frontend": "yosys",
     },
     "place_and_route": {
         "core_padding_microns": 1,
@@ -77,6 +81,8 @@ BASE = {
 }
 
 _REPORT_RE = re.compile(r"^pnr_(?P<step>.+)_report\.json$")
+
+_OUTPUT_GROUPS = "--output_groups=+logs,+reports"
 
 def validate_search_space(keys):
     """Fail at startup, before Ray starts, on unsupported parameters."""
@@ -93,7 +99,7 @@ def _lit(v):
         return "True" if v else "False"
     return json.dumps(v)  # ints and strings
 
-def render_build(rules_hdl_repo, cells, top, sdc, deps, params, stop_after_step="detailed_routing", synth_tcl=None, synth_additional_args=None):
+def render_build(rules_hdl_repo, cells, top, sdc, deps, params, stop_after_step="detailed_routing", synth_tcl=None, parser_extra_commands=None, frontend=None):
     """Content of the BUILD file of one trial package."""
     attrs = {step: dict(base) for step, base in BASE.items()}
     for key, value in params.items():
@@ -109,8 +115,10 @@ def render_build(rules_hdl_repo, cells, top, sdc, deps, params, stop_after_step=
         attrs["place_and_route"]["stop_after_step"] = stop_after_step
     if synth_tcl is not None:
         attrs["synthesize_rtl"]["synth_tcl"] = synth_tcl
-    if synth_additional_args is not None:
-        attrs["synthesize_rtl"]["synth_additional_args"] = " ".join(synth_additional_args)
+    if frontend is not None:
+        attrs["synthesize_rtl"]["frontend"] = frontend
+    if parser_extra_commands is not None:
+        attrs["synthesize_rtl"]["parser_extra_commands"] = " ".join(parser_extra_commands)
 
     def fmt(step):
         return "".join(
@@ -197,7 +205,7 @@ class BazelFlow:
                 return
             time.sleep(1)
 
-    def run_trial(self, params, experiment_dir=None, stop_after_step="detailed_routing", synth_tcl=None, synth_additional_args=None, save_logs=False):
+    def run_trial(self, params, experiment_dir=None, stop_after_step="detailed_routing", synth_tcl=None, parser_extra_commands=None, frontend=None, save_logs=False):
         """Build one trial. Raises RuntimeError if the build fails.
 
         experiment_dir: absolute directory inside the workspace that becomes the
@@ -209,7 +217,7 @@ class BazelFlow:
         os.makedirs(experiment_dir, exist_ok=True)
         with open(os.path.join(experiment_dir, "BUILD"), "w") as f:
             f.write(render_build(
-                self.rules_hdl_repo, self.cells, self.top, self.sdc, self.deps, params, stop_after_step=stop_after_step, synth_tcl=synth_tcl, synth_additional_args=synth_additional_args))
+                self.rules_hdl_repo, self.cells, self.top, self.sdc, self.deps, params, stop_after_step=stop_after_step, synth_tcl=synth_tcl, parser_extra_commands=parser_extra_commands, frontend=frontend))
 
         rel = os.path.relpath(experiment_dir, self.workspace_root).replace(os.sep, "/")
         if rel.startswith(".."):
@@ -227,6 +235,7 @@ class BazelFlow:
                 "--output_base=" + self._output_base(slot),
                 "--max_idle_secs=600",
                 "build",
+                _OUTPUT_GROUPS,
                 "--config=autotuner", ## TODO: this depends on .bazelrc, check if it can stay
                 label,
             ]
@@ -262,7 +271,7 @@ class BazelFlow:
                 "--max_idle_secs=600"]
         kwargs = dict(cwd=self.workspace_root, capture_output=True, text=True)
         files = subprocess.run(
-            base + ["cquery", "--config=autotuner", label, "--output=files"], **kwargs)
+            base + ["cquery", "--config=autotuner", _OUTPUT_GROUPS, label, "--output=files"], **kwargs)
         if files.returncode != 0:
             raise RuntimeError(
                 "cannot list the outputs of {}: {}".format(

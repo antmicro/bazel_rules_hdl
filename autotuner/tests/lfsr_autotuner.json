@@ -1,4 +1,15 @@
 {
+    "synthesize_rtl.strategy": {
+        "type": "string",
+        "choices": [
+            "lite",
+            "speed",
+            "area",
+            "lms",
+            "basic"
+        ],
+        "reference": "basic"
+    },
     "place_and_route.placement_density": {
         "type": "float",
         "minmax": [
