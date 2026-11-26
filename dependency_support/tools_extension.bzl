@@ -70,9 +70,9 @@ def _tools_extension_impl(module_ctx):
     maybe(
         http_archive,
         name = "verilator",
-        urls = ["https://github.com/verilator/verilator/archive/01770671ed125677ff2c9580fa209e04bdc753d5.tar.gz"],
-        sha256 = "78d2d76095def8f5945b7ca3844f80fcca9c4a449acc2e1357395335557655c2",
-        strip_prefix = "verilator-01770671ed125677ff2c9580fa209e04bdc753d5",
+        urls = ["https://github.com/verilator/verilator/archive/43872a413ae4c07cff523222e430d9301c5364bc.tar.gz"],
+        sha256 = "3c0c3ef20f8585daf1d408780a67219377d6e6d19558df140f34f98aeb3da8ae",
+        strip_prefix = "verilator-43872a413ae4c07cff523222e430d9301c5364bc",
         build_file = "//dependency_support/verilator:verilator.BUILD.bazel",
     )
 
