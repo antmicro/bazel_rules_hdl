@@ -14,29 +14,6 @@
 
 # Adapted from https://github.com/pulp-platform/croc/tree/main/yosys/scripts
 
-proc processAbcScript {abc_script} {
-    # ABC resolves relative paths against its working directory (the execroot),
-    # so give it the absolute path of the AIG, which sits next to the script.
-    set aig [file normalize [file join [file dirname $abc_script] lazy_man_synth_library.aig]]
-    if {![file exists $aig]} {
-        error "AIG not found: $aig"
-    }
-
-    set in [open $abc_script r]
-    set raw [read -nonewline $in]
-    close $in
-
-    set processed [string map [list lazy_man_synth_library.aig $aig] $raw]
-    if {$processed eq $raw} {
-        error "no reference to lazy_man_synth_library.aig found in $abc_script"
-    }
-
-    set out [file tempfile abc_out_path]
-    puts -nonewline $out $processed
-    close $out
-    return $abc_out_path
-}
-
 # map dont_touch attribute commonly applied to output-nets of async regs to keep
 yosys attrmap -rename dont_touch keep
 yosys attrmap -tocase keep -imap keep="true" keep=1
@@ -100,7 +77,7 @@ yosys clean -purge
 yosys dfflibmap -liberty $stdcell_lib
 
 # call ABC
-yosys abc -liberty $stdcell_lib -D $period_ps -script [processAbcScript $abc_script] -constr $abc_constr {*}$dont_use_args
+yosys abc -liberty $stdcell_lib -D $period_ps -script $abc_script -constr $abc_constr {*}$dont_use_args
 
 yosys clean -purge
 

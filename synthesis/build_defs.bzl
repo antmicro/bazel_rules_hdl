@@ -290,6 +290,7 @@ def _synth_opt_logic(ctx, rtlil_netlist, strategy, synth_opt_tcl, extra_inputs, 
     syn_opt_script = ctx.actions.declare_file("{}_synthesis_opt.tcl".format(ctx.label.name))
 
     inputs = [rtlil_netlist]
+    inputs.extend(extra_inputs)
 
     ## Generate the translation commands
     cmd, liberty = _yosys_script_header(ctx, yosys_stats)
@@ -336,12 +337,30 @@ def _synth_opt_logic(ctx, rtlil_netlist, strategy, synth_opt_tcl, extra_inputs, 
 
         # ABC script
         abc_script_file = None
+        lms_aig = None
         for f in ctx.files._synth_opt_scripts:
             if f.basename == "abc_%s.script" % strategy:
                 abc_script_file = f
+            if f.basename == "lazy_man_synth_library.aig":
+                lms_aig = f
         if abc_script_file == None:
             fail("ERROR: abc script not found under name abc_%s.script" % strategy)
-        cmd.append("set abc_script %s" % abc_script_file.path)
+        if strategy == "lms" and lms_aig == None:
+            fail("ERROR: failed to retrieve lms aig file.")
+
+        ## Rewrite abc file with proper timing
+        substitutions = {
+            "lazy_man_synth_library.aig": "unused" if lms_aig == None else lms_aig.path,
+            "{D}": str(ctx.attr.target_clock_period_pico_seconds),
+        }
+        abc_script_with_timing = ctx.actions.declare_file("{}_abc_with_timing.script".format(ctx.label.name))
+        ctx.actions.expand_template(
+            template = abc_script_file,
+            output = abc_script_with_timing,
+            substitutions = substitutions,
+        )
+        cmd.append("set abc_script %s" % abc_script_with_timing.path)
+        inputs.append(abc_script_with_timing)
 
     # ABC always added to sources, used or not
     inputs.append(ctx.executable.abc_tool)
@@ -363,7 +382,6 @@ def _synth_opt_logic(ctx, rtlil_netlist, strategy, synth_opt_tcl, extra_inputs, 
                 for cell in tiehi_cells:
                     cmd_string += "%s " % cell
             cmd.append(cmd_string)
-        inputs.extend(extra_inputs)
 
     # Output and reporting
     cmd.append("write_verilog %s" % verilog_netlist.path)

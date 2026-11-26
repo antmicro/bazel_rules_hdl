@@ -13,7 +13,7 @@ balance
 refactor -z
 rewrite -z
 balance
-retime {D} -M 5
+retime {D} -M 3 -o
 strash
 scleanup
 fraig_store
@@ -54,12 +54,6 @@ balance
 fraig_store
 fraig_restore
 amap -m -Q 0.1 -F 20 -A 20 -C 5000
-retime {D}
-&get -n
-&st
-&dch
-&nf
-&put
-upsize {D}
+topo
 dnsize {D}
 stime -p
