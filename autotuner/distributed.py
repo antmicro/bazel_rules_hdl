@@ -110,7 +110,7 @@ class AutoTunerBase(tune.Trainable):
         ## It follows the ongoing iteration counter
         experiment_dir = os.path.join(RUN_DIR, self.trial_name, f"iteration{self.training_iteration}")
         try:
-            result = self.flow.run_trial(self.params, experiment_dir=experiment_dir, stop_after_step=args.stop_after_step, parser_extra_commands=args.parser_extra_commands, save_logs=DEBUG)
+            result = self.flow.run_trial(self.params, experiment_dir=experiment_dir, stop_after_step=args.stop_after_step, parser_extra_commands=args.parser_extra_commands, frontend=args.frontend, save_logs=DEBUG)
         except (RuntimeError, ValueError) as err:
             print(f"[ERROR TUN-0100] {err}")
             return {METRIC: ERROR_METRIC, "effective_clk_period": ERROR_METRIC,

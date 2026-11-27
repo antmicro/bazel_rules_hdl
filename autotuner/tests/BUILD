@@ -90,6 +90,10 @@ run_autotuner_tune(
     config = "lfsr_autotuner.json",
     frontend = "slang",
     jobs = 8,
+    parser_extra_commands = [
+        "--libraries-inherit-macros",
+        "--single-unit",
+    ],
     perturbation = 2,
     samples = 4,
     sdc = ":constraint",
