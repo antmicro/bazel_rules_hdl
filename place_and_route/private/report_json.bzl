@@ -53,7 +53,11 @@ def report_power_json(var_name):
         var_name: name of the TCL variable to store the result
     """
 
-    cmd = "tee -variable %s -quiet { report_power -format json }" % var_name
+    # Execute the command twice on purpose
+    # The initial report_power may reports errors and warning, those will end up in the normal log
+    # the 2nd command captured by tee is the JSON results only
+    # This makes sure no warning/error corrupt the JSON, but they will still be visible in the log
+    cmd = "report_power\ntee -variable %s -quiet { report_power -format json }" % var_name
     return cmd
 
 def report_area_json(var_name):
