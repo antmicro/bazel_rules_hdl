@@ -42,6 +42,7 @@ run_autotuner_tune(
     perturbation = 2,
     samples = 4,
     sdc = ":constraint",
+    stop_after_step = "global_placement",
     top = "lfsr",
     deps = [
         ":lfsr",

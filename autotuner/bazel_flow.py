@@ -99,7 +99,7 @@ def _lit(v):
         return "True" if v else "False"
     return json.dumps(v)  # ints and strings
 
-def render_build(rules_hdl_repo, cells, top, sdc, deps, params, stop_after_step="detailed_routing", synth_tcl=None, parser_extra_commands=None, frontend=None):
+def render_build(rules_hdl_repo, cells, top, sdc, deps, params, stop_after_step="detailed_routing", parser_extra_commands=None, frontend=None):
     """Content of the BUILD file of one trial package."""
     attrs = {step: dict(base) for step, base in BASE.items()}
     for key, value in params.items():
@@ -113,12 +113,10 @@ def render_build(rules_hdl_repo, cells, top, sdc, deps, params, stop_after_step=
         attrs["place_and_route"]["stop_after_step"] = "init_floor_plan"
     else:
         attrs["place_and_route"]["stop_after_step"] = stop_after_step
-    if synth_tcl is not None:
-        attrs["synthesize_rtl"]["synth_tcl"] = synth_tcl
     if frontend is not None:
         attrs["synthesize_rtl"]["frontend"] = frontend
-    if parser_extra_commands is not None:
-        attrs["synthesize_rtl"]["parser_extra_commands"] = " ".join(parser_extra_commands)
+    if parser_extra_commands != None:
+        attrs["synthesize_rtl"]["parser_extra_commands"] = parser_extra_commands
 
     def fmt(step):
         return "".join(
@@ -205,7 +203,7 @@ class BazelFlow:
                 return
             time.sleep(1)
 
-    def run_trial(self, params, experiment_dir=None, stop_after_step="detailed_routing", synth_tcl=None, parser_extra_commands=None, frontend=None, save_logs=False):
+    def run_trial(self, params, experiment_dir=None, stop_after_step="detailed_routing", parser_extra_commands=None, frontend=None, save_logs=False):
         """Build one trial. Raises RuntimeError if the build fails.
 
         experiment_dir: absolute directory inside the workspace that becomes the
@@ -217,7 +215,7 @@ class BazelFlow:
         os.makedirs(experiment_dir, exist_ok=True)
         with open(os.path.join(experiment_dir, "BUILD"), "w") as f:
             f.write(render_build(
-                self.rules_hdl_repo, self.cells, self.top, self.sdc, self.deps, params, stop_after_step=stop_after_step, synth_tcl=synth_tcl, parser_extra_commands=parser_extra_commands, frontend=frontend))
+                self.rules_hdl_repo, self.cells, self.top, self.sdc, self.deps, params, stop_after_step=stop_after_step, parser_extra_commands=parser_extra_commands, frontend=frontend))
 
         rel = os.path.relpath(experiment_dir, self.workspace_root).replace(os.sep, "/")
         if rel.startswith(".."):

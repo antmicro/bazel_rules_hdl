@@ -58,6 +58,7 @@ from ray.tune.search.ax import AxSearch
 from ray.tune.search.basic_variant import BasicVariantGenerator
 from ray.tune.search.hyperopt import HyperOptSearch
 from ray.tune.search.optuna import OptunaSearch
+from ray.tune.search.sample import Categorical, Float, Integer
 
 from ax.service.ax_client import AxClient
 
@@ -109,7 +110,7 @@ class AutoTunerBase(tune.Trainable):
         ## It follows the ongoing iteration counter
         experiment_dir = os.path.join(RUN_DIR, self.trial_name, f"iteration{self.training_iteration}")
         try:
-            result = self.flow.run_trial(self.params, experiment_dir=experiment_dir, stop_after_step=args.stop_after_step, synth_tcl=args.synth_tcl, parser_extra_commands=args.parser_extra_commands, save_logs=DEBUG)
+            result = self.flow.run_trial(self.params, experiment_dir=experiment_dir, stop_after_step=args.stop_after_step, parser_extra_commands=args.parser_extra_commands, save_logs=DEBUG)
         except (RuntimeError, ValueError) as err:
             print(f"[ERROR TUN-0100] {err}")
             return {METRIC: ERROR_METRIC, "effective_clk_period": ERROR_METRIC,
@@ -262,12 +263,6 @@ def parse_arguments():
         default="@@",
         help="Name of the bazel_rules_hdl. Switchable for testing purposes",
     )
-
-    parser.add_argument(
-        "--synth_tcl",
-        type=str,
-        help="Custom TCL script for synthesis",
-    )
     parser.add_argument(
         "--frontend",
         type=str,
@@ -386,6 +381,33 @@ type=int,
 
     return args
 
+def pbt_mutations(config):
+    """Mutation spec for PBT.
+
+    PBT multiplies the value of any non-list mutation by 0.8 or 1.2, which
+    fails for strings and drifts constants and bools out of their set. A
+    categorical domain is therefore given as the plain list of its choices,
+    so PBT only resamples it or moves to a neighbouring choice.
+    """
+    return {
+        key: list(domain.categories) if isinstance(domain, Categorical) else domain
+        for key, domain in config.items()
+    }
+
+
+def pbt_explore_fn(config):
+    """Returns a PBT custom_explore_fn keeping numeric values in their range."""
+
+    def clamp(new_config):
+        for key, domain in config.items():
+            if isinstance(domain, (Float, Integer)):
+                # tune.randint excludes its upper bound
+                upper = domain.upper - 1 if isinstance(domain, Integer) else domain.upper
+                new_config[key] = min(max(new_config[key], domain.lower), upper)
+        return new_config
+
+    return clamp
+
 
 def set_algorithm(
     algorithm_name, experiment_name, reference_params, reference_result, seed, perturbation, jobs, config
@@ -435,7 +457,8 @@ def set_algorithm(
         algorithm = PopulationBasedTraining(
             time_attr="training_iteration",
             perturbation_interval=perturbation,
-            hyperparam_mutations=config,
+            hyperparam_mutations=pbt_mutations(config),
+            custom_explore_fn=pbt_explore_fn(config),
             synch=True,
         )
     elif algorithm_name == "random":
@@ -568,7 +591,7 @@ def main():
         try:
             reference_experiment = make_flow(slots=1).run_trial(
                 reference_params, experiment_dir=os.path.join(
-                RUN_DIR, "reference"), stop_after_step=args.stop_after_step, synth_tcl=args.synth_tcl, parser_extra_commands=args.parser_extra_commands, frontend=args.frontend, save_logs=DEBUG)
+                RUN_DIR, "reference"), stop_after_step=args.stop_after_step, parser_extra_commands=args.parser_extra_commands, frontend=args.frontend, save_logs=DEBUG)
             # Compute the score of the reference run
             reference_metrics = read_metrics(reference_experiment["reports"], args.stop_after_step)
         ## The reference run may fail, catch that error
